@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive 3D Force-Directed Graph</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d1117; color: #e6edf3; font-family: sans-serif; }
+    header {
+      padding: 12px 24px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1rem; font-weight: 600; }
+    #graph { width: 100vw; height: calc(100vh - 49px); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Interactive 3D Force-Directed Graph</h1>
+  </header>
+  <div id="graph"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1/dist/3d-force-graph.min.js"></script>
+  <script src="/client/main.js"></script>
+</body>
+</html>
