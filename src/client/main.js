@@ -33,7 +33,8 @@ async function loadGraph() {
       .nodeColor((node) => node.color || '#4a9eff')
       .linkWidth((link) => Math.max(1, link.weight || 1))
       .linkDirectionalParticles(0)
-      .d3Force('charge').strength(-140);
+      .d3Force('charge')
+      .strength(-140);
 
     setStatus(`${data.nodes.length} nodes, ${data.links.length} links`);
   } catch (err) {
