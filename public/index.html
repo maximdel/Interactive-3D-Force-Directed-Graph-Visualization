@@ -6,22 +6,30 @@
   <title>Interactive 3D Force-Directed Graph</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0d1117; color: #e6edf3; font-family: sans-serif; }
+    body {
+      background: radial-gradient(circle at top, #172033 0%, #0d1117 48%, #090c12 100%);
+      color: #e6edf3;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
     header {
       padding: 12px 24px;
-      background: #161b22;
+      background: rgba(22, 27, 34, 0.92);
       border-bottom: 1px solid #30363d;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
+      backdrop-filter: blur(10px);
     }
-    header h1 { font-size: 1rem; font-weight: 600; }
+    header h1 { font-size: 1rem; font-weight: 600; letter-spacing: 0.02em; }
+    header .meta { font-size: 0.85rem; color: #9da7b3; }
     #graph { width: 100vw; height: calc(100vh - 49px); }
   </style>
 </head>
 <body>
   <header>
     <h1>Interactive 3D Force-Directed Graph</h1>
+    <div class="meta" id="status">Loading graph data...</div>
   </header>
   <div id="graph"></div>
 
