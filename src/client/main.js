@@ -64,13 +64,17 @@ function filterGraphByText(data, text) {
   const q = text.toLowerCase();
 
   const keepNodeIds = new Set(
-    data.nodes.filter((n) => (n.label || '').toLowerCase().includes(q)).map((n) => n.id),
+    data.nodes
+      .filter((n) => (n.label || '').toLowerCase().includes(q))
+      .map((n) => n.id),
   );
 
   // Keep nodes that match or are connected to matching nodes
   const links = data.links.filter((link) => {
-    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+    const sourceId =
+      typeof link.source === 'object' ? link.source.id : link.source;
+    const targetId =
+      typeof link.target === 'object' ? link.target.id : link.target;
     if (keepNodeIds.has(sourceId) || keepNodeIds.has(targetId)) {
       keepNodeIds.add(sourceId);
       keepNodeIds.add(targetId);
@@ -84,7 +88,10 @@ function filterGraphByText(data, text) {
 }
 
 function applyCurrentFilters() {
-  const q = (filterTextElement && filterTextElement.value) ? filterTextElement.value.trim() : '';
+  const q =
+    filterTextElement && filterTextElement.value
+      ? filterTextElement.value.trim()
+      : '';
   const usingPreview = !(previewToggleElement && !previewToggleElement.checked);
 
   if (usingPreview && previewData) {
@@ -152,9 +159,12 @@ function debounce(fn, wait = 250) {
 
 // Wire UI controls
 if (filterTextElement) {
-  filterTextElement.addEventListener('input', debounce(() => {
-    applyCurrentFilters();
-  }, 300));
+  filterTextElement.addEventListener(
+    'input',
+    debounce(() => {
+      applyCurrentFilters();
+    }, 300),
+  );
 }
 
 if (previewToggleElement) {
@@ -162,7 +172,9 @@ if (previewToggleElement) {
     const checked = previewToggleElement.checked;
     if (!checked) {
       // user turned OFF preview -> full mode
-      const ok = confirm('Load full graph? This may be slow or unresponsive for very large datasets.');
+      const ok = confirm(
+        'Load full graph? This may be slow or unresponsive for very large datasets.',
+      );
       if (!ok) {
         previewToggleElement.checked = true;
         return;
