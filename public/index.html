@@ -53,7 +53,16 @@
   <body>
     <header>
       <h1>Interactive 3D Force-Directed Graph</h1>
-      <div class="meta" id="status">Loading graph data...</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="meta" id="status">Loading graph data...</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:12px">
+          <label style="display:flex;align-items:center;gap:6px;color:#9da7b3;font-size:0.9rem">
+            <input type="checkbox" id="previewToggle" checked />
+            Preview
+          </label>
+          <input id="filterText" placeholder="Filter (title, org, topic)..." style="padding:6px 8px;border-radius:6px;border:1px solid #26313a;background:#081011;color:#e6edf3;" />
+        </div>
+      </div>
     </header>
     <div id="graph"></div>
 
