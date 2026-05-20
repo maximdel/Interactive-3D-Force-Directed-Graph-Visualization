@@ -11,6 +11,15 @@ const applySampleBtn = document.getElementById('applySample');
 const preset1 = document.getElementById('preset1');
 const preset5 = document.getElementById('preset5');
 const preset10 = document.getElementById('preset10');
+const orgLinkWeightElement = document.getElementById('orgLinkWeight');
+const topicLinkWeightElement = document.getElementById('topicLinkWeight');
+const orgLinkWeightValueElement = document.getElementById('orgLinkWeightValue');
+const topicLinkWeightValueElement = document.getElementById('topicLinkWeightValue');
+
+const linkWeightState = {
+  organization: 1.3,
+  topic: 1.0,
+};
 
 const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
   .backgroundColor('#0d1117')
@@ -23,46 +32,12 @@ const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
   .enableNodeDrag(true);
 
 let fullData = null;
-let previewData = null;
 let currentFiltered = null;
 
 function setStatus(message) {
   if (statusElement) {
     statusElement.textContent = message;
   }
-}
-
-function buildPreviewGraph(data) {
-  const projectNodes = data.nodes.filter((node) => node.type === 'project');
-  const allowedProjectIds = new Set(
-    projectNodes.slice(0, PREVIEW_PROJECT_LIMIT).map((node) => node.id),
-  );
-  const connectedNodeIds = new Set();
-
-  const links = data.links.filter((link) => {
-    const sourceId =
-      typeof link.source === 'object' ? link.source.id : link.source;
-    const targetId =
-      typeof link.target === 'object' ? link.target.id : link.target;
-    const keep =
-      allowedProjectIds.has(sourceId) || allowedProjectIds.has(targetId);
-
-    if (keep) {
-      connectedNodeIds.add(sourceId);
-      connectedNodeIds.add(targetId);
-    }
-
-    return keep;
-  });
-
-  const nodes = data.nodes.filter((node) => connectedNodeIds.has(node.id));
-
-  return {
-    nodes,
-    links,
-    preview: true,
-    projectCount: projectNodes.length,
-  };
 }
 
 // Deterministic hash -> uint32
@@ -78,11 +53,23 @@ function sampleProjectIds(nodes, pct, seed = 42) {
   const projects = nodes.filter((n) => n.type === 'project');
   const selected = new Set();
   const threshold = pct / 100;
+  let bestProject = null;
+  let bestHash = Number.POSITIVE_INFINITY;
+
   projects.forEach((p) => {
     const h = hashStringToUint32(`${p.id}:${seed}`);
     const r = h / 4294967295; // [0,1]
+    if (h < bestHash) {
+      bestHash = h;
+      bestProject = p.id;
+    }
     if (r < threshold) selected.add(p.id);
   });
+
+  if (selected.size === 0 && bestProject) {
+    selected.add(bestProject);
+  }
+
   return selected;
 }
 
@@ -91,9 +78,12 @@ function buildSampledGraph(data, pct, seed = 42) {
   const connectedNodeIds = new Set();
 
   const links = data.links.filter((link) => {
-    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-    const keep = allowedProjectIds.has(sourceId) || allowedProjectIds.has(targetId);
+    const sourceId =
+      typeof link.source === 'object' ? link.source.id : link.source;
+    const targetId =
+      typeof link.target === 'object' ? link.target.id : link.target;
+    const keep =
+      allowedProjectIds.has(sourceId) || allowedProjectIds.has(targetId);
     if (keep) {
       connectedNodeIds.add(sourceId);
       connectedNodeIds.add(targetId);
@@ -103,6 +93,33 @@ function buildSampledGraph(data, pct, seed = 42) {
 
   const nodes = data.nodes.filter((node) => connectedNodeIds.has(node.id));
   return { nodes, links, sampled: true, pct, seed };
+}
+
+function getCurrentSamplePct() {
+  if (!sampleSlider) return 1;
+  return Math.max(1, parseInt(sampleSlider.value, 10) || 1);
+}
+
+function getLinkKind(link) {
+  if (link.role === 'organization' || link.role === 'org') return 'organization';
+  if (link.role === 'topic') return 'topic';
+
+  const sourceType = link.source && link.source.type ? link.source.type : null;
+  const targetType = link.target && link.target.type ? link.target.type : null;
+
+  if (sourceType === 'organization' || targetType === 'organization') {
+    return 'organization';
+  }
+  if (sourceType === 'topic' || targetType === 'topic') {
+    return 'topic';
+  }
+
+  return 'topic';
+}
+
+function getLinkWeightMultiplier(link) {
+  const kind = getLinkKind(link);
+  return linkWeightState[kind] || 1;
 }
 
 function filterGraphByText(data, text) {
@@ -140,8 +157,9 @@ function applyCurrentFilters() {
       : '';
   const usingPreview = !(previewToggleElement && !previewToggleElement.checked);
 
-  if (usingPreview && previewData) {
-    currentFiltered = q ? filterGraphByText(previewData, q) : previewData;
+  if (usingPreview && fullData) {
+    const sampled = buildSampledGraph(fullData, getCurrentSamplePct(), 42);
+    currentFiltered = q ? filterGraphByText(sampled, q) : sampled;
   } else if (!usingPreview && fullData) {
     currentFiltered = q ? filterGraphByText(fullData, q) : fullData;
   } else {
@@ -151,7 +169,7 @@ function applyCurrentFilters() {
   graph.graphData(currentFiltered);
   if (currentFiltered && currentFiltered.nodes) {
     setStatus(
-      `Showing ${currentFiltered.nodes.length} nodes, ${currentFiltered.links.length} links${usingPreview ? ' (preview)' : ''}`,
+      `Showing ${currentFiltered.nodes.length} nodes, ${currentFiltered.links.length} links${usingPreview ? ` (preview ${getCurrentSamplePct()}%)` : ''}`,
     );
   }
 }
@@ -167,13 +185,15 @@ async function loadGraph() {
 
     const data = await response.json();
     fullData = data;
-    previewData = buildPreviewGraph(data);
 
     graph
-      .graphData(previewData)
+      .graphData(buildSampledGraph(data, getCurrentSamplePct(), 42))
       .nodeId('id')
       .nodeColor((node) => node.color || '#4a9eff')
-      .linkWidth((link) => Math.max(0.75, Math.min(2, link.weight || 1)))
+      .linkWidth((link) =>
+        Math.max(0.75, Math.min(3, (link.weight || 1) * getLinkWeightMultiplier(link))),
+      )
+      .linkStrength((link) => 0.8 * getLinkWeightMultiplier(link))
       .linkDirectionalParticles(0)
       .d3Force('charge')
       .strength(-80);
@@ -228,22 +248,39 @@ function applySampledView(pct, seed = 42) {
   }
   setStatus(`Sampling ${pct}% (seed ${seed})...`);
   const sampled = buildSampledGraph(fullData, pct, seed);
-  const q = filterTextElement && filterTextElement.value ? filterTextElement.value.trim() : '';
+  const q =
+    filterTextElement && filterTextElement.value
+      ? filterTextElement.value.trim()
+      : '';
   currentFiltered = q ? filterGraphByText(sampled, q) : sampled;
   graph.graphData(currentFiltered);
-  setStatus(`Sample ${pct}%: ${currentFiltered.nodes.length} nodes, ${currentFiltered.links.length} links`);
+  setStatus(
+    `Sample ${pct}%: ${currentFiltered.nodes.length} nodes, ${currentFiltered.links.length} links`,
+  );
 }
 
 if (applySampleBtn) {
   applySampleBtn.addEventListener('click', () => {
-    const pct = parseInt(sampleSlider.value, 10) || 10;
+    const pct = parseInt(sampleSlider.value, 10) || 1;
     applySampledView(pct, 42);
   });
 }
 
-if (preset1) preset1.addEventListener('click', () => { sampleSlider.value = 1; sampleValue.textContent = '1%'; });
-if (preset5) preset5.addEventListener('click', () => { sampleSlider.value = 5; sampleValue.textContent = '5%'; });
-if (preset10) preset10.addEventListener('click', () => { sampleSlider.value = 10; sampleValue.textContent = '10%'; });
+if (preset1)
+  preset1.addEventListener('click', () => {
+    sampleSlider.value = 1;
+    sampleValue.textContent = '1%';
+  });
+if (preset5)
+  preset5.addEventListener('click', () => {
+    sampleSlider.value = 5;
+    sampleValue.textContent = '5%';
+  });
+if (preset10)
+  preset10.addEventListener('click', () => {
+    sampleSlider.value = 10;
+    sampleValue.textContent = '10%';
+  });
 
 if (previewToggleElement) {
   previewToggleElement.addEventListener('change', async (e) => {
@@ -263,3 +300,35 @@ if (previewToggleElement) {
     applyCurrentFilters();
   });
 }
+
+function applyLinkWeights() {
+  if (orgLinkWeightElement && orgLinkWeightValueElement) {
+    const value = parseFloat(orgLinkWeightElement.value) || 1.3;
+    linkWeightState.organization = value;
+    orgLinkWeightValueElement.textContent = value.toFixed(1);
+  }
+  if (topicLinkWeightElement && topicLinkWeightValueElement) {
+    const value = parseFloat(topicLinkWeightElement.value) || 1.0;
+    linkWeightState.topic = value;
+    topicLinkWeightValueElement.textContent = value.toFixed(1);
+  }
+
+  if (currentFiltered) {
+    graph
+      .linkWidth((link) =>
+        Math.max(0.75, Math.min(3, (link.weight || 1) * getLinkWeightMultiplier(link))),
+      )
+      .linkStrength((link) => 0.8 * getLinkWeightMultiplier(link))
+      .graphData(currentFiltered);
+  }
+}
+
+if (orgLinkWeightElement) {
+  orgLinkWeightElement.addEventListener('input', applyLinkWeights);
+}
+
+if (topicLinkWeightElement) {
+  topicLinkWeightElement.addEventListener('input', applyLinkWeights);
+}
+
+applyLinkWeights();
