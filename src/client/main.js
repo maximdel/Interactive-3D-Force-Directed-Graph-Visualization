@@ -5,6 +5,12 @@ const PREVIEW_PROJECT_LIMIT = 250;
 // UI controls
 const previewToggleElement = document.getElementById('previewToggle');
 const filterTextElement = document.getElementById('filterText');
+const sampleSlider = document.getElementById('sampleSlider');
+const sampleValue = document.getElementById('sampleValue');
+const applySampleBtn = document.getElementById('applySample');
+const preset1 = document.getElementById('preset1');
+const preset5 = document.getElementById('preset5');
+const preset10 = document.getElementById('preset10');
 
 const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
   .backgroundColor('#0d1117')
@@ -57,6 +63,46 @@ function buildPreviewGraph(data) {
     preview: true,
     projectCount: projectNodes.length,
   };
+}
+
+// Deterministic hash -> uint32
+function hashStringToUint32(str) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+
+function sampleProjectIds(nodes, pct, seed = 42) {
+  const projects = nodes.filter((n) => n.type === 'project');
+  const selected = new Set();
+  const threshold = pct / 100;
+  projects.forEach((p) => {
+    const h = hashStringToUint32(`${p.id}:${seed}`);
+    const r = h / 4294967295; // [0,1]
+    if (r < threshold) selected.add(p.id);
+  });
+  return selected;
+}
+
+function buildSampledGraph(data, pct, seed = 42) {
+  const allowedProjectIds = sampleProjectIds(data.nodes, pct, seed);
+  const connectedNodeIds = new Set();
+
+  const links = data.links.filter((link) => {
+    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+    const keep = allowedProjectIds.has(sourceId) || allowedProjectIds.has(targetId);
+    if (keep) {
+      connectedNodeIds.add(sourceId);
+      connectedNodeIds.add(targetId);
+    }
+    return keep;
+  });
+
+  const nodes = data.nodes.filter((node) => connectedNodeIds.has(node.id));
+  return { nodes, links, sampled: true, pct, seed };
 }
 
 function filterGraphByText(data, text) {
@@ -166,6 +212,38 @@ if (filterTextElement) {
     }, 300),
   );
 }
+
+// Sampling UI wiring
+if (sampleSlider && sampleValue) {
+  sampleValue.textContent = `${sampleSlider.value}%`;
+  sampleSlider.addEventListener('input', () => {
+    sampleValue.textContent = `${sampleSlider.value}%`;
+  });
+}
+
+function applySampledView(pct, seed = 42) {
+  if (!fullData) {
+    setStatus('Data not loaded yet');
+    return;
+  }
+  setStatus(`Sampling ${pct}% (seed ${seed})...`);
+  const sampled = buildSampledGraph(fullData, pct, seed);
+  const q = filterTextElement && filterTextElement.value ? filterTextElement.value.trim() : '';
+  currentFiltered = q ? filterGraphByText(sampled, q) : sampled;
+  graph.graphData(currentFiltered);
+  setStatus(`Sample ${pct}%: ${currentFiltered.nodes.length} nodes, ${currentFiltered.links.length} links`);
+}
+
+if (applySampleBtn) {
+  applySampleBtn.addEventListener('click', () => {
+    const pct = parseInt(sampleSlider.value, 10) || 10;
+    applySampledView(pct, 42);
+  });
+}
+
+if (preset1) preset1.addEventListener('click', () => { sampleSlider.value = 1; sampleValue.textContent = '1%'; });
+if (preset5) preset5.addEventListener('click', () => { sampleSlider.value = 5; sampleValue.textContent = '5%'; });
+if (preset10) preset10.addEventListener('click', () => { sampleSlider.value = 10; sampleValue.textContent = '10%'; });
 
 if (previewToggleElement) {
   previewToggleElement.addEventListener('change', async (e) => {
