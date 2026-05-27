@@ -23,11 +23,15 @@ const linkWeightState = {
   topic: 1.0,
 };
 
-// Particle controls
+// particle settings
 const particleCountMultElement = document.getElementById('particleCountMult');
 const particleSpeedMultElement = document.getElementById('particleSpeedMult');
-const particleCountMultValue = document.getElementById('particleCountMultValue');
-const particleSpeedMultValue = document.getElementById('particleSpeedMultValue');
+const particleCountMultValue = document.getElementById(
+  'particleCountMultValue',
+);
+const particleSpeedMultValue = document.getElementById(
+  'particleSpeedMultValue',
+);
 
 const particleState = {
   countMult: 1,
@@ -212,7 +216,10 @@ async function loadGraph() {
       )
       .linkStrength((link) => 0.8 * getLinkWeightMultiplier(link))
       .linkDirectionalParticles((link) => {
-        const base = Math.max(0, Math.round((link.weight || 1) * getLinkWeightMultiplier(link)));
+        const base = Math.max(
+          0,
+          Math.round((link.weight || 1) * getLinkWeightMultiplier(link)),
+        );
         const val = Math.min(8, Math.round(base * particleState.countMult));
         return val;
       })
@@ -377,7 +384,10 @@ function applyParticleSettings() {
   if (currentFiltered) {
     graph
       .linkDirectionalParticles((link) => {
-        const base = Math.max(0, Math.round((link.weight || 1) * getLinkWeightMultiplier(link)));
+        const base = Math.max(
+          0,
+          Math.round((link.weight || 1) * getLinkWeightMultiplier(link)),
+        );
         return Math.min(8, Math.round(base * particleState.countMult));
       })
       .linkDirectionalParticleSpeed((link) => {
@@ -388,7 +398,9 @@ function applyParticleSettings() {
   }
 }
 
-if (particleCountMultElement) particleCountMultElement.addEventListener('input', applyParticleSettings);
-if (particleSpeedMultElement) particleSpeedMultElement.addEventListener('input', applyParticleSettings);
+if (particleCountMultElement)
+  particleCountMultElement.addEventListener('input', applyParticleSettings);
+if (particleSpeedMultElement)
+  particleSpeedMultElement.addEventListener('input', applyParticleSettings);
 
 applyParticleSettings();
