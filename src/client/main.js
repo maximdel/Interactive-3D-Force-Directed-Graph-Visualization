@@ -50,9 +50,83 @@ const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
 
 let fullData = null;
 let currentFiltered = null;
+let particleDebugTimer = null;
 
 function getForceMultiplier(link) {
   return 0.8 * getLinkWeightMultiplier(link);
+}
+
+function getLinkVisualKind(link) {
+  const kind = getLinkKind(link);
+  return kind === 'organization' ? 'organization' : 'topic';
+}
+
+function getParticleColor(link) {
+  return getLinkVisualKind(link) === 'organization' ? '#ffb36b' : '#7dffbe';
+}
+
+function getParticleCount(link) {
+  const weight = (link.weight || 1) * getLinkWeightMultiplier(link);
+  const base = Math.max(1, Math.round(weight));
+  return Math.min(10, Math.round(base * particleState.countMult));
+}
+
+function getParticleWidth(link) {
+  const weight = (link.weight || 1) * getLinkWeightMultiplier(link);
+  return Math.max(0.6, Math.min(3.5, 0.35 + weight * 0.45));
+}
+
+function getParticleSpeed(link) {
+  const weight = (link.weight || 1) * getLinkWeightMultiplier(link);
+  return (
+    Math.max(0.0015, Math.min(0.04, 0.0025 + weight * 0.0025)) *
+    particleState.speedMult
+  );
+}
+
+function updateParticleLabels() {
+  if (particleCountMultValue) {
+    particleCountMultValue.textContent = `${particleState.countMult.toFixed(1)}x`;
+  }
+  if (particleSpeedMultValue) {
+    const speed = particleState.speedMult;
+    const formattedSpeed = speed < 0.1 ? speed.toFixed(3) : speed.toFixed(1);
+    particleSpeedMultValue.textContent = `${formattedSpeed}x`;
+  }
+}
+
+function logParticleDebug() {
+  const activeLinks =
+    currentFiltered && Array.isArray(currentFiltered.links)
+      ? currentFiltered.links.length
+      : 0;
+  const sampleLink =
+    currentFiltered && Array.isArray(currentFiltered.links)
+      ? currentFiltered.links[0]
+      : null;
+
+  console.log('[particles]', {
+    countMult: particleState.countMult,
+    speedMult: particleState.speedMult,
+    activeLinks,
+    sample: sampleLink
+      ? {
+          kind: getLinkVisualKind(sampleLink),
+          count: getParticleCount(sampleLink),
+          speed: getParticleSpeed(sampleLink),
+        }
+      : null,
+  });
+}
+
+function startParticleDebugLog() {
+  if (particleDebugTimer) {
+    clearInterval(particleDebugTimer);
+  }
+
+  particleDebugTimer = setInterval(() => {
+    logParticleDebug();
+  }, 1000);
 }
 
 function setStatus(message) {
@@ -205,20 +279,19 @@ function applyGraphForces() {
   }
 
   graph
-    .linkWidth((link) =>
-      Math.max(0.75, Math.min(3, (link.weight || 1) * getLinkWeightMultiplier(link))),
+    .linkWidth((link) => Math.max(0.75, Math.min(3.5, getParticleWidth(link))))
+    .linkDirectionalParticleColor((link) => getParticleColor(link))
+    .linkDirectionalParticleWidth((link) => getParticleWidth(link))
+    .linkDirectionalParticles((link) =>
+      Math.max(1, Math.min(4, getParticleCount(link))),
     )
-    .linkDirectionalParticles((link) => {
-      const base = Math.max(
-        0,
-        Math.round((link.weight || 1) * getLinkWeightMultiplier(link)),
-      );
-      return Math.min(8, Math.round(base * particleState.countMult));
-    })
-    .linkDirectionalParticleSpeed((link) => {
-      const baseSpeed = (link.weight || 1) * getLinkWeightMultiplier(link);
-      return Math.max(0.1, baseSpeed * particleState.speedMult);
-    });
+    .linkDirectionalParticleSpeed((link) => getParticleSpeed(link))
+    .linkDirectionalParticleResolution(8)
+    .linkDirectionalParticleOffset((link) =>
+      getLinkVisualKind(link) === 'organization' ? 0.15 : 0.55,
+    );
+
+  graph.refresh();
 }
 
 async function loadGraph() {
@@ -241,6 +314,7 @@ async function loadGraph() {
       .strength(-80);
 
     applyGraphForces();
+    startParticleDebugLog();
 
     // initial filtered view
     applyCurrentFilters();
@@ -301,6 +375,7 @@ function applySampledView(pct, seed = 42) {
   setStatus(
     `Sample ${pct}%: ${currentFiltered.nodes.length} nodes, ${currentFiltered.links.length} links`,
   );
+  applyGraphForces();
 }
 
 if (applySampleBtn) {
@@ -358,8 +433,8 @@ function applyLinkWeights() {
   }
 
   if (currentFiltered) {
-    applyGraphForces();
     graph.graphData(currentFiltered);
+    applyGraphForces();
   }
 }
 
@@ -378,29 +453,14 @@ function applyParticleSettings() {
   if (particleCountMultElement && particleCountMultValue) {
     const v = parseFloat(particleCountMultElement.value) || 1;
     particleState.countMult = v;
-    particleCountMultValue.textContent = `${v.toFixed(1)}x`;
   }
   if (particleSpeedMultElement && particleSpeedMultValue) {
-    const v = parseFloat(particleSpeedMultElement.value) || 1;
+    const v = parseFloat(particleSpeedMultElement.value) || 0.01;
     particleState.speedMult = v;
-    particleSpeedMultValue.textContent = `${v.toFixed(1)}x`;
   }
 
-  if (currentFiltered) {
-    graph
-      .linkDirectionalParticles((link) => {
-        const base = Math.max(
-          0,
-          Math.round((link.weight || 1) * getLinkWeightMultiplier(link)),
-        );
-        return Math.min(8, Math.round(base * particleState.countMult));
-      })
-      .linkDirectionalParticleSpeed((link) => {
-        const baseSpeed = (link.weight || 1) * getLinkWeightMultiplier(link);
-        return Math.max(0.1, baseSpeed * particleState.speedMult);
-      })
-      .graphData(currentFiltered);
-  }
+  updateParticleLabels();
+  graph.refresh();
 }
 
 if (particleCountMultElement)
