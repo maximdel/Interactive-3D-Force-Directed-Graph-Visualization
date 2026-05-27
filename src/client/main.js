@@ -14,11 +14,24 @@ const preset10 = document.getElementById('preset10');
 const orgLinkWeightElement = document.getElementById('orgLinkWeight');
 const topicLinkWeightElement = document.getElementById('topicLinkWeight');
 const orgLinkWeightValueElement = document.getElementById('orgLinkWeightValue');
-const topicLinkWeightValueElement = document.getElementById('topicLinkWeightValue');
+const topicLinkWeightValueElement = document.getElementById(
+  'topicLinkWeightValue',
+);
 
 const linkWeightState = {
   organization: 1.3,
   topic: 1.0,
+};
+
+// Particle controls
+const particleCountMultElement = document.getElementById('particleCountMult');
+const particleSpeedMultElement = document.getElementById('particleSpeedMult');
+const particleCountMultValue = document.getElementById('particleCountMultValue');
+const particleSpeedMultValue = document.getElementById('particleSpeedMultValue');
+
+const particleState = {
+  countMult: 1,
+  speedMult: 1,
 };
 
 const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
@@ -101,7 +114,8 @@ function getCurrentSamplePct() {
 }
 
 function getLinkKind(link) {
-  if (link.role === 'organization' || link.role === 'org') return 'organization';
+  if (link.role === 'organization' || link.role === 'org')
+    return 'organization';
   if (link.role === 'topic') return 'topic';
 
   const sourceType = link.source && link.source.type ? link.source.type : null;
@@ -191,10 +205,21 @@ async function loadGraph() {
       .nodeId('id')
       .nodeColor((node) => node.color || '#4a9eff')
       .linkWidth((link) =>
-        Math.max(0.75, Math.min(3, (link.weight || 1) * getLinkWeightMultiplier(link))),
+        Math.max(
+          0.75,
+          Math.min(3, (link.weight || 1) * getLinkWeightMultiplier(link)),
+        ),
       )
       .linkStrength((link) => 0.8 * getLinkWeightMultiplier(link))
-      .linkDirectionalParticles(0)
+      .linkDirectionalParticles((link) => {
+        const base = Math.max(0, Math.round((link.weight || 1) * getLinkWeightMultiplier(link)));
+        const val = Math.min(8, Math.round(base * particleState.countMult));
+        return val;
+      })
+      .linkDirectionalParticleSpeed((link) => {
+        const baseSpeed = (link.weight || 1) * getLinkWeightMultiplier(link);
+        return Math.max(0.1, baseSpeed * particleState.speedMult);
+      })
       .d3Force('charge')
       .strength(-80);
 
@@ -316,7 +341,10 @@ function applyLinkWeights() {
   if (currentFiltered) {
     graph
       .linkWidth((link) =>
-        Math.max(0.75, Math.min(3, (link.weight || 1) * getLinkWeightMultiplier(link))),
+        Math.max(
+          0.75,
+          Math.min(3, (link.weight || 1) * getLinkWeightMultiplier(link)),
+        ),
       )
       .linkStrength((link) => 0.8 * getLinkWeightMultiplier(link))
       .graphData(currentFiltered);
@@ -332,3 +360,35 @@ if (topicLinkWeightElement) {
 }
 
 applyLinkWeights();
+
+// Particle UI wiring
+function applyParticleSettings() {
+  if (particleCountMultElement && particleCountMultValue) {
+    const v = parseFloat(particleCountMultElement.value) || 1;
+    particleState.countMult = v;
+    particleCountMultValue.textContent = `${v.toFixed(1)}x`;
+  }
+  if (particleSpeedMultElement && particleSpeedMultValue) {
+    const v = parseFloat(particleSpeedMultElement.value) || 1;
+    particleState.speedMult = v;
+    particleSpeedMultValue.textContent = `${v.toFixed(1)}x`;
+  }
+
+  if (currentFiltered) {
+    graph
+      .linkDirectionalParticles((link) => {
+        const base = Math.max(0, Math.round((link.weight || 1) * getLinkWeightMultiplier(link)));
+        return Math.min(8, Math.round(base * particleState.countMult));
+      })
+      .linkDirectionalParticleSpeed((link) => {
+        const baseSpeed = (link.weight || 1) * getLinkWeightMultiplier(link);
+        return Math.max(0.1, baseSpeed * particleState.speedMult);
+      })
+      .graphData(currentFiltered);
+  }
+}
+
+if (particleCountMultElement) particleCountMultElement.addEventListener('input', applyParticleSettings);
+if (particleSpeedMultElement) particleSpeedMultElement.addEventListener('input', applyParticleSettings);
+
+applyParticleSettings();
