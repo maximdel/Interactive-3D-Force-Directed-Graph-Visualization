@@ -51,6 +51,10 @@ const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
 let fullData = null;
 let currentFiltered = null;
 
+function getForceMultiplier(link) {
+  return 0.8 * getLinkWeightMultiplier(link);
+}
+
 function setStatus(message) {
   if (statusElement) {
     statusElement.textContent = message;
@@ -185,11 +189,36 @@ function applyCurrentFilters() {
   }
 
   graph.graphData(currentFiltered);
+  applyGraphForces();
   if (currentFiltered && currentFiltered.nodes) {
     setStatus(
       `Showing ${currentFiltered.nodes.length} nodes, ${currentFiltered.links.length} links${usingPreview ? ` (preview ${getCurrentSamplePct()}%)` : ''}`,
     );
   }
+}
+
+function applyGraphForces() {
+  const linkForce = graph.d3Force('link');
+
+  if (linkForce && typeof linkForce.strength === 'function') {
+    linkForce.strength((link) => getForceMultiplier(link));
+  }
+
+  graph
+    .linkWidth((link) =>
+      Math.max(0.75, Math.min(3, (link.weight || 1) * getLinkWeightMultiplier(link))),
+    )
+    .linkDirectionalParticles((link) => {
+      const base = Math.max(
+        0,
+        Math.round((link.weight || 1) * getLinkWeightMultiplier(link)),
+      );
+      return Math.min(8, Math.round(base * particleState.countMult));
+    })
+    .linkDirectionalParticleSpeed((link) => {
+      const baseSpeed = (link.weight || 1) * getLinkWeightMultiplier(link);
+      return Math.max(0.1, baseSpeed * particleState.speedMult);
+    });
 }
 
 async function loadGraph() {
@@ -208,27 +237,10 @@ async function loadGraph() {
       .graphData(buildSampledGraph(data, getCurrentSamplePct(), 42))
       .nodeId('id')
       .nodeColor((node) => node.color || '#4a9eff')
-      .linkWidth((link) =>
-        Math.max(
-          0.75,
-          Math.min(3, (link.weight || 1) * getLinkWeightMultiplier(link)),
-        ),
-      )
-      .linkStrength((link) => 0.8 * getLinkWeightMultiplier(link))
-      .linkDirectionalParticles((link) => {
-        const base = Math.max(
-          0,
-          Math.round((link.weight || 1) * getLinkWeightMultiplier(link)),
-        );
-        const val = Math.min(8, Math.round(base * particleState.countMult));
-        return val;
-      })
-      .linkDirectionalParticleSpeed((link) => {
-        const baseSpeed = (link.weight || 1) * getLinkWeightMultiplier(link);
-        return Math.max(0.1, baseSpeed * particleState.speedMult);
-      })
       .d3Force('charge')
       .strength(-80);
+
+    applyGraphForces();
 
     // initial filtered view
     applyCurrentFilters();
@@ -346,15 +358,8 @@ function applyLinkWeights() {
   }
 
   if (currentFiltered) {
-    graph
-      .linkWidth((link) =>
-        Math.max(
-          0.75,
-          Math.min(3, (link.weight || 1) * getLinkWeightMultiplier(link)),
-        ),
-      )
-      .linkStrength((link) => 0.8 * getLinkWeightMultiplier(link))
-      .graphData(currentFiltered);
+    applyGraphForces();
+    graph.graphData(currentFiltered);
   }
 }
 
