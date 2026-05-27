@@ -51,6 +51,7 @@ const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
 let fullData = null;
 let currentFiltered = null;
 let particleDebugTimer = null;
+const headerElement = document.querySelector('.app-header');
 
 function getForceMultiplier(link) {
   return 0.8 * getLinkWeightMultiplier(link);
@@ -127,6 +128,13 @@ function startParticleDebugLog() {
   particleDebugTimer = setInterval(() => {
     logParticleDebug();
   }, 1000);
+}
+
+function resizeGraph() {
+  const headerHeight = headerElement ? headerElement.offsetHeight : 0;
+  const graphHeight = Math.max(0, window.innerHeight - headerHeight);
+
+  graph.width(window.innerWidth).height(graphHeight);
 }
 
 function setStatus(message) {
@@ -326,10 +334,10 @@ async function loadGraph() {
 }
 
 window.addEventListener('resize', () => {
-  graph.width(window.innerWidth).height(window.innerHeight - 49);
+  resizeGraph();
 });
 
-graph.width(window.innerWidth).height(window.innerHeight - 49);
+resizeGraph();
 loadGraph();
 
 // Debounce helper
