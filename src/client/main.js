@@ -38,6 +38,160 @@ const particleState = {
   speedMult: 1,
 };
 
+// layout / pinning
+const saveLayoutBtn = document.getElementById('saveLayout');
+const clearPinsBtn = document.getElementById('clearPins');
+const PIN_STORAGE_KEY = 'graphPinnedNodes_v1';
+const pinnedPositions = new Map();
+const pinnedGlowColor = '#ffd166';
+
+const pinnedGlowTexture = (() => {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext('2d');
+  const gradient = context.createRadialGradient(
+    size / 2,
+    size / 2,
+    size * 0.08,
+    size / 2,
+    size / 2,
+    size * 0.5,
+  );
+  gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  gradient.addColorStop(0.22, 'rgba(255, 245, 178, 0.95)');
+  gradient.addColorStop(0.5, 'rgba(255, 209, 102, 0.45)');
+  gradient.addColorStop(0.8, 'rgba(255, 209, 102, 0.12)');
+  gradient.addColorStop(1, 'rgba(255, 209, 102, 0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+})();
+
+function createPinnedGlowObject(node) {
+  if (!node || !node.pinned) return null;
+
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: pinnedGlowTexture,
+      color: pinnedGlowColor,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+      opacity: 0.95,
+    }),
+  );
+
+  const scale = Math.max(12, Math.sqrt((node.val || 1) * 4) * 6);
+  sprite.scale.set(scale, scale, 1);
+  sprite.renderOrder = 999;
+  return sprite;
+}
+
+function loadPinnedNodesFromStorage() {
+  try {
+    const raw = localStorage.getItem(PIN_STORAGE_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    for (const id of Object.keys(obj)) {
+      const p = obj[id];
+      if (p && typeof p.x === 'number') pinnedPositions.set(id, p);
+    }
+  } catch (e) {
+    console.warn('Failed to load pinned nodes', e);
+  }
+}
+
+function savePinnedNodesToStorage() {
+  try {
+    const out = {};
+    for (const [id, pos] of pinnedPositions.entries()) {
+      out[id] = pos;
+    }
+    localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(out));
+  } catch (e) {
+    console.warn('Failed to save pinned nodes', e);
+  }
+}
+
+function applyPinsToNodeList(nodes) {
+  if (!Array.isArray(nodes)) return;
+  nodes.forEach((n) => {
+    const p = pinnedPositions.get(n.id);
+    if (p) {
+      n.fx = p.x;
+      n.fy = p.y;
+      n.fz = p.z;
+      n.pinned = true;
+    } else {
+      delete n.fx;
+      delete n.fy;
+      delete n.fz;
+      n.pinned = false;
+    }
+  });
+}
+
+function syncPinnedPositionsFromVisibleGraph() {
+  if (!currentFiltered || !Array.isArray(currentFiltered.nodes)) return;
+
+  currentFiltered.nodes.forEach((node) => {
+    if (!node.pinned) return;
+
+    pinnedPositions.set(node.id, {
+      x: node.fx ?? node.x,
+      y: node.fy ?? node.y,
+      z: node.fz ?? node.z,
+    });
+  });
+}
+
+function togglePin(node) {
+  if (!node) return;
+  if (node.pinned) {
+    delete node.fx;
+    delete node.fy;
+    delete node.fz;
+    node.pinned = false;
+    pinnedPositions.delete(node.id);
+  } else {
+    node.fx = node.x;
+    node.fy = node.y;
+    node.fz = node.z;
+    node.pinned = true;
+    pinnedPositions.set(node.id, { x: node.fx, y: node.fy, z: node.fz });
+  }
+  savePinnedNodesToStorage();
+  graph.refresh();
+}
+
+function clearAllPins() {
+  pinnedPositions.clear();
+  localStorage.removeItem(PIN_STORAGE_KEY);
+  if (currentFiltered && Array.isArray(currentFiltered.nodes)) {
+    currentFiltered.nodes.forEach((n) => {
+      delete n.fx;
+      delete n.fy;
+      delete n.fz;
+      n.pinned = false;
+    });
+  }
+  if (fullData && Array.isArray(fullData.nodes)) {
+    fullData.nodes.forEach((n) => {
+      delete n.fx;
+      delete n.fy;
+      delete n.fz;
+      n.pinned = false;
+    });
+  }
+  graph.refresh();
+}
+
 const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
   .backgroundColor('#0d1117')
   .nodeLabel('label')
@@ -46,7 +200,27 @@ const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
   .nodeOpacity(0.95)
   .nodeRelSize(5)
   .nodeResolution(8)
+  .nodeThreeObjectExtend((node) => Boolean(node.pinned))
+  .nodeThreeObject(createPinnedGlowObject)
   .enableNodeDrag(true);
+
+// pin/unpin on click, keep pinned positions when drag end
+graph.onNodeClick((node) => {
+  try {
+    togglePin(node);
+  } catch (e) {
+    console.warn('Pin toggle failed', e);
+  }
+});
+
+graph.onNodeDragEnd((node) => {
+  if (!node) return;
+  if (node.pinned) {
+    // update saved pinned position
+    pinnedPositions.set(node.id, { x: node.x, y: node.y, z: node.z });
+    savePinnedNodesToStorage();
+  }
+});
 
 let fullData = null;
 let currentFiltered = null;
@@ -270,6 +444,9 @@ function applyCurrentFilters() {
     currentFiltered = { nodes: [], links: [] };
   }
 
+  // apply any pinned node positions to the nodes about to be rendered
+  applyPinsToNodeList(currentFiltered.nodes);
+
   graph.graphData(currentFiltered);
   applyGraphForces();
   if (currentFiltered && currentFiltered.nodes) {
@@ -313,6 +490,9 @@ async function loadGraph() {
 
     const data = await response.json();
     fullData = data;
+
+    // load any saved pinned nodes so they can be applied to views
+    loadPinnedNodesFromStorage();
 
     graph
       .graphData(buildSampledGraph(data, getCurrentSamplePct(), 42))
@@ -477,3 +657,21 @@ if (particleSpeedMultElement)
   particleSpeedMultElement.addEventListener('input', applyParticleSettings);
 
 applyParticleSettings();
+
+// Layout controls
+if (saveLayoutBtn) {
+  saveLayoutBtn.addEventListener('click', () => {
+    syncPinnedPositionsFromVisibleGraph();
+    savePinnedNodesToStorage();
+    setStatus('Layout saved with pinned nodes');
+  });
+}
+
+if (clearPinsBtn) {
+  clearPinsBtn.addEventListener('click', () => {
+    if (confirm('Clear all pinned nodes?')) {
+      clearAllPins();
+      setStatus('Cleared pinned nodes');
+    }
+  });
+}
