@@ -5,6 +5,15 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT;
 
+// The graph API is dynamic and should never be revalidated from cache.
+app.disable('etag');
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 const COUCH_URL = process.env.COUCHDB_URL;
 const COUCH_DB = process.env.COUCHDB_DATABASE;
 const COUCH_USER = process.env.COUCHDB_USER;

@@ -482,7 +482,7 @@ function applyGraphForces() {
 async function loadGraph() {
   try {
     setStatus('Loading graph data...');
-    const response = await fetch('/api/graph');
+    const response = await fetch('/api/graph', { cache: 'no-store' });
 
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
