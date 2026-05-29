@@ -8,7 +8,10 @@ const PORT = process.env.PORT;
 // The graph API is dynamic and should never be revalidated from cache.
 app.disable('etag');
 app.use('/api', (req, res, next) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader(
+    'Cache-Control',
+    'no-store, no-cache, must-revalidate, proxy-revalidate',
+  );
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   next();
@@ -103,11 +106,50 @@ app.get('/api/links', async (req, res) => {
 
 app.get('/api/graph', async (req, res) => {
   try {
-    const nodesResult = await fetch(`http://localhost:${PORT}/api/nodes`);
-    const linksResult = await fetch(`http://localhost:${PORT}/api/links`);
+    const result = await queryCouchDB('_all_docs?include_docs=true');
+    const nodes = result.rows
+      .filter(
+        (r) =>
+          r.doc &&
+          (r.doc.type === 'project' ||
+            r.doc.type === 'organization' ||
+            r.doc.type === 'topic'),
+      )
+      .map((r) => {
+        const doc = r.doc;
+        let label, color;
 
-    const nodes = await nodesResult.json();
-    const links = await linksResult.json();
+        if (doc.type === 'project') {
+          label = doc.title || doc.acronym || 'Project';
+          color = doc.status === 'SIGNED' ? '#4a9eff' : '#888888';
+        } else if (doc.type === 'organization') {
+          label = doc.shortName || doc.name;
+          color = '#ff9a4a';
+        } else if (doc.type === 'topic') {
+          label = doc.title || doc.topic;
+          color = '#4aff9a';
+        }
+
+        return {
+          id: doc._id,
+          label,
+          color,
+          type: doc.type,
+          data: doc,
+        };
+      });
+
+    const links = result.rows
+      .filter((r) => r.doc && r.doc.type === 'link')
+      .map((r) => {
+        const doc = r.doc;
+        return {
+          source: doc.source,
+          target: doc.target,
+          weight: doc.weight || 1.0,
+          role: doc.role,
+        };
+      });
 
     res.json({ nodes, links });
   } catch (err) {

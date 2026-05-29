@@ -145,15 +145,25 @@
         <section class="control-group control-group--stack">
           <div class="control-heading">Layout</div>
           <div class="control-row">
+            <button id="pinMode" class="control-button is-active">
+              Pin Mode
+            </button>
+            <button id="clusterMode" class="control-button secondary">
+              Cluster Mode
+            </button>
             <button id="saveLayout" class="control-button">Save Layout</button>
             <button id="clearPins" class="control-button secondary">
               Clear Pins
+            </button>
+            <button id="resetClusters" class="control-button secondary">
+              Expand All
             </button>
             <div
               class="control-value"
               style="margin-left: 8px; color: #9da7b3; font-size: 0.8rem"
             >
-              Click a node to pin/unpin
+              Pin Mode: click a node to pin/unpin. Cluster Mode: click org/topic
+              nodes to collapse.
             </div>
           </div>
         </section>

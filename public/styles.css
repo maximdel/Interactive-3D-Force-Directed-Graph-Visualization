@@ -21,7 +21,12 @@ body {
     -apple-system,
     BlinkMacSystemFont,
     sans-serif;
-  background: radial-gradient(circle at top, #172033 0%, #0d1117 48%, #090c12 100%);
+  background: radial-gradient(
+    circle at top,
+    #172033 0%,
+    #0d1117 48%,
+    #090c12 100%
+  );
 }
 
 .app-header {
@@ -138,6 +143,12 @@ body {
 .control-button.secondary {
   color: #9da7b3;
   background: #071018;
+}
+
+.control-button.is-active {
+  border-color: rgba(122, 215, 255, 0.85);
+  background: rgba(32, 68, 92, 0.9);
+  box-shadow: 0 0 0 1px rgba(122, 215, 255, 0.18);
 }
 
 #graph {

@@ -41,56 +41,29 @@ const particleState = {
 // layout / pinning
 const saveLayoutBtn = document.getElementById('saveLayout');
 const clearPinsBtn = document.getElementById('clearPins');
+const resetClustersBtn = document.getElementById('resetClusters');
+const pinModeBtn = document.getElementById('pinMode');
+const clusterModeBtn = document.getElementById('clusterMode');
 const PIN_STORAGE_KEY = 'graphPinnedNodes_v1';
+const CLUSTER_STORAGE_KEY = 'graphCollapsedClusters_v1';
 const pinnedPositions = new Map();
+const collapsedClusters = new Set();
 const pinnedGlowColor = '#ffd166';
+let interactionMode = 'pin';
 
-const pinnedGlowTexture = (() => {
-  const size = 128;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const context = canvas.getContext('2d');
-  const gradient = context.createRadialGradient(
-    size / 2,
-    size / 2,
-    size * 0.08,
-    size / 2,
-    size / 2,
-    size * 0.5,
-  );
-  gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-  gradient.addColorStop(0.22, 'rgba(255, 245, 178, 0.95)');
-  gradient.addColorStop(0.5, 'rgba(255, 209, 102, 0.45)');
-  gradient.addColorStop(0.8, 'rgba(255, 209, 102, 0.12)');
-  gradient.addColorStop(1, 'rgba(255, 209, 102, 0)');
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, size, size);
+function setInteractionMode(mode) {
+  interactionMode = mode;
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
-})();
+  if (pinModeBtn) {
+    pinModeBtn.classList.toggle('is-active', mode === 'pin');
+  }
+  if (clusterModeBtn) {
+    clusterModeBtn.classList.toggle('is-active', mode === 'cluster');
+  }
+}
 
 function createPinnedGlowObject(node) {
-  if (!node || !node.pinned) return null;
-
-  const sprite = new THREE.Sprite(
-    new THREE.SpriteMaterial({
-      map: pinnedGlowTexture,
-      color: pinnedGlowColor,
-      transparent: true,
-      depthWrite: false,
-      depthTest: false,
-      blending: THREE.AdditiveBlending,
-      opacity: 0.95,
-    }),
-  );
-
-  const scale = Math.max(12, Math.sqrt((node.val || 1) * 4) * 6);
-  sprite.scale.set(scale, scale, 1);
-  sprite.renderOrder = 999;
-  return sprite;
+  return null;
 }
 
 function loadPinnedNodesFromStorage() {
@@ -119,6 +92,214 @@ function savePinnedNodesToStorage() {
   }
 }
 
+function loadCollapsedClustersFromStorage() {
+  try {
+    const raw = localStorage.getItem(CLUSTER_STORAGE_KEY);
+    if (!raw) return;
+
+    const ids = JSON.parse(raw);
+    if (Array.isArray(ids)) {
+      ids.forEach((id) => collapsedClusters.add(id));
+    }
+  } catch (e) {
+    console.warn('Failed to load collapsed clusters', e);
+  }
+}
+
+function saveCollapsedClustersToStorage() {
+  try {
+    localStorage.setItem(
+      CLUSTER_STORAGE_KEY,
+      JSON.stringify(Array.from(collapsedClusters)),
+    );
+  } catch (e) {
+    console.warn('Failed to save collapsed clusters', e);
+  }
+}
+
+function saveLayoutState() {
+  savePinnedNodesToStorage();
+  saveCollapsedClustersToStorage();
+}
+
+function isCollapsibleClusterNode(node) {
+  return node && (node.type === 'organization' || node.type === 'topic');
+}
+
+function getNodeLabel(node) {
+  const baseLabel = node.label || node.title || node.name || node.id;
+  if (node.collapsedCluster) {
+    const count = node.clusterMemberCount || 0;
+    return `${baseLabel} (+${count})`;
+  }
+  return baseLabel;
+}
+
+function buildClusteredGraph(data) {
+  if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.links)) {
+    return { nodes: [], links: [] };
+  }
+
+  if (collapsedClusters.size === 0) {
+    return {
+      nodes: data.nodes,
+      links: data.links,
+    };
+  }
+
+  const nodeById = new Map(data.nodes.map((node) => [node.id, node]));
+  const hiddenProjectIds = new Set();
+  const projectMemberships = new Map();
+  const clusterMemberCounts = new Map();
+
+  function addProjectMembership(projectId, clusterId) {
+    if (!projectMemberships.has(projectId)) {
+      projectMemberships.set(projectId, new Set());
+    }
+    projectMemberships.get(projectId).add(clusterId);
+
+    if (!clusterMemberCounts.has(clusterId)) {
+      clusterMemberCounts.set(clusterId, new Set());
+    }
+    clusterMemberCounts.get(clusterId).add(projectId);
+  }
+
+  data.links.forEach((link) => {
+    const sourceId =
+      typeof link.source === 'object' ? link.source.id : link.source;
+    const targetId =
+      typeof link.target === 'object' ? link.target.id : link.target;
+    const sourceNode = nodeById.get(sourceId);
+    const targetNode = nodeById.get(targetId);
+
+    if (
+      sourceNode &&
+      sourceNode.type === 'project' &&
+      collapsedClusters.has(targetId)
+    ) {
+      hiddenProjectIds.add(sourceId);
+      addProjectMembership(sourceId, targetId);
+    }
+
+    if (
+      targetNode &&
+      targetNode.type === 'project' &&
+      collapsedClusters.has(sourceId)
+    ) {
+      hiddenProjectIds.add(targetId);
+      addProjectMembership(targetId, sourceId);
+    }
+  });
+
+  const visibleNodes = data.nodes
+    .filter((node) => node.type !== 'project' || !hiddenProjectIds.has(node.id))
+    .map((node) => {
+      node.collapsedCluster = collapsedClusters.has(node.id);
+      node.clusterMemberCount = clusterMemberCounts.has(node.id)
+        ? clusterMemberCounts.get(node.id).size
+        : 0;
+      return node;
+    });
+
+  const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
+  const aggregatedLinks = new Map();
+
+  function addAggregatedLink(sourceId, targetId, link) {
+    if (sourceId === targetId) return;
+    const key =
+      sourceId < targetId
+        ? `${sourceId}::${targetId}`
+        : `${targetId}::${sourceId}`;
+    const existing = aggregatedLinks.get(key);
+    const weight = link.weight || 1;
+    if (existing) {
+      existing.weight += weight;
+    } else {
+      aggregatedLinks.set(key, {
+        source: sourceId,
+        target: targetId,
+        weight,
+        role: 'cluster',
+      });
+    }
+  }
+
+  data.links.forEach((link) => {
+    const sourceId =
+      typeof link.source === 'object' ? link.source.id : link.source;
+    const targetId =
+      typeof link.target === 'object' ? link.target.id : link.target;
+    const sourceHidden = hiddenProjectIds.has(sourceId);
+    const targetHidden = hiddenProjectIds.has(targetId);
+
+    if (!sourceHidden && !targetHidden) {
+      if (visibleNodeIds.has(sourceId) && visibleNodeIds.has(targetId)) {
+        aggregatedLinks.set(
+          sourceId < targetId
+            ? `${sourceId}::${targetId}`
+            : `${targetId}::${sourceId}`,
+          { ...link },
+        );
+      }
+      return;
+    }
+
+    const hiddenProjectId = sourceHidden ? sourceId : targetId;
+    const neighborId = sourceHidden ? targetId : sourceId;
+    const memberships = projectMemberships.get(hiddenProjectId);
+
+    if (!memberships || memberships.size === 0) {
+      return;
+    }
+
+    memberships.forEach((clusterId) => {
+      if (neighborId === clusterId) return;
+      addAggregatedLink(clusterId, neighborId, link);
+    });
+  });
+
+  return {
+    nodes: visibleNodes,
+    links: Array.from(aggregatedLinks.values()),
+  };
+}
+
+function renderCurrentGraph() {
+  if (!currentFiltered) {
+    currentDisplayed = { nodes: [], links: [] };
+    graph.graphData(currentDisplayed);
+    applyGraphForces();
+    return;
+  }
+
+  currentDisplayed = buildClusteredGraph(currentFiltered);
+  applyPinsToNodeList(currentDisplayed.nodes);
+  graph.graphData(currentDisplayed);
+  applyGraphForces();
+}
+
+function toggleClusterCollapse(node) {
+  if (!isCollapsibleClusterNode(node)) return;
+
+  if (collapsedClusters.has(node.id)) {
+    collapsedClusters.delete(node.id);
+  } else {
+    collapsedClusters.add(node.id);
+  }
+
+  saveCollapsedClustersToStorage();
+  renderCurrentGraph();
+  setStatus(
+    `${collapsedClusters.has(node.id) ? 'Collapsed' : 'Expanded'} ${getNodeLabel(node)}`,
+  );
+}
+
+function resetClusterState() {
+  collapsedClusters.clear();
+  saveCollapsedClustersToStorage();
+  renderCurrentGraph();
+}
+
 function applyPinsToNodeList(nodes) {
   if (!Array.isArray(nodes)) return;
   nodes.forEach((n) => {
@@ -138,9 +319,9 @@ function applyPinsToNodeList(nodes) {
 }
 
 function syncPinnedPositionsFromVisibleGraph() {
-  if (!currentFiltered || !Array.isArray(currentFiltered.nodes)) return;
+  if (!currentDisplayed || !Array.isArray(currentDisplayed.nodes)) return;
 
-  currentFiltered.nodes.forEach((node) => {
+  currentDisplayed.nodes.forEach((node) => {
     if (!node.pinned) return;
 
     pinnedPositions.set(node.id, {
@@ -167,7 +348,7 @@ function togglePin(node) {
     pinnedPositions.set(node.id, { x: node.fx, y: node.fy, z: node.fz });
   }
   savePinnedNodesToStorage();
-  graph.refresh();
+  setStatus(`${node.pinned ? 'Pinned' : 'Unpinned'} ${getNodeLabel(node)}`);
 }
 
 function clearAllPins() {
@@ -194,20 +375,32 @@ function clearAllPins() {
 
 const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
   .backgroundColor('#0d1117')
-  .nodeLabel('label')
+  .nodeLabel((node) => getNodeLabel(node))
   .linkColor(() => 'rgba(255, 255, 255, 0.35)')
   .linkOpacity(0.45)
   .nodeOpacity(0.95)
   .nodeRelSize(5)
   .nodeResolution(8)
-  .nodeThreeObjectExtend((node) => Boolean(node.pinned))
+  .nodeThreeObjectExtend(() => false)
   .nodeThreeObject(createPinnedGlowObject)
   .enableNodeDrag(true);
 
-// pin/unpin on click, keep pinned positions when drag end
-graph.onNodeClick((node) => {
+window.__graph = graph;
+
+// plain click pins; shift-click collapses/expands clusters
+graph.onNodeClick((node, event) => {
   try {
-    togglePin(node);
+    if (
+      interactionMode === 'cluster' ||
+      (event && event.shiftKey && isCollapsibleClusterNode(node))
+    ) {
+      toggleClusterCollapse(node);
+      return;
+    }
+
+    if (interactionMode === 'pin') {
+      togglePin(node);
+    }
   } catch (e) {
     console.warn('Pin toggle failed', e);
   }
@@ -224,6 +417,7 @@ graph.onNodeDragEnd((node) => {
 
 let fullData = null;
 let currentFiltered = null;
+let currentDisplayed = null;
 let particleDebugTimer = null;
 const headerElement = document.querySelector('.app-header');
 
@@ -272,12 +466,12 @@ function updateParticleLabels() {
 
 function logParticleDebug() {
   const activeLinks =
-    currentFiltered && Array.isArray(currentFiltered.links)
-      ? currentFiltered.links.length
+    currentDisplayed && Array.isArray(currentDisplayed.links)
+      ? currentDisplayed.links.length
       : 0;
   const sampleLink =
-    currentFiltered && Array.isArray(currentFiltered.links)
-      ? currentFiltered.links[0]
+    currentDisplayed && Array.isArray(currentDisplayed.links)
+      ? currentDisplayed.links[0]
       : null;
 
   console.log('[particles]', {
@@ -444,11 +638,7 @@ function applyCurrentFilters() {
     currentFiltered = { nodes: [], links: [] };
   }
 
-  // apply any pinned node positions to the nodes about to be rendered
-  applyPinsToNodeList(currentFiltered.nodes);
-
-  graph.graphData(currentFiltered);
-  applyGraphForces();
+  renderCurrentGraph();
   if (currentFiltered && currentFiltered.nodes) {
     setStatus(
       `Showing ${currentFiltered.nodes.length} nodes, ${currentFiltered.links.length} links${usingPreview ? ` (preview ${getCurrentSamplePct()}%)` : ''}`,
@@ -482,7 +672,13 @@ function applyGraphForces() {
 async function loadGraph() {
   try {
     setStatus('Loading graph data...');
-    const response = await fetch('/api/graph', { cache: 'no-store' });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const response = await fetch('/api/graph', {
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
@@ -493,6 +689,7 @@ async function loadGraph() {
 
     // load any saved pinned nodes so they can be applied to views
     loadPinnedNodesFromStorage();
+    loadCollapsedClustersFromStorage();
 
     graph
       .graphData(buildSampledGraph(data, getCurrentSamplePct(), 42))
@@ -507,6 +704,13 @@ async function loadGraph() {
     // initial filtered view
     applyCurrentFilters();
   } catch (err) {
+    if (err && err.name === 'AbortError') {
+      console.error('Graph load timed out after 30 seconds');
+      setStatus('Graph load timed out');
+      graph.graphData({ nodes: [], links: [] });
+      return;
+    }
+
     console.error('Failed to load graph data:', err);
     setStatus('Failed to load graph data');
     graph.graphData({ nodes: [], links: [] });
@@ -559,11 +763,10 @@ function applySampledView(pct, seed = 42) {
       ? filterTextElement.value.trim()
       : '';
   currentFiltered = q ? filterGraphByText(sampled, q) : sampled;
-  graph.graphData(currentFiltered);
+  renderCurrentGraph();
   setStatus(
     `Sample ${pct}%: ${currentFiltered.nodes.length} nodes, ${currentFiltered.links.length} links`,
   );
-  applyGraphForces();
 }
 
 if (applySampleBtn) {
@@ -621,8 +824,7 @@ function applyLinkWeights() {
   }
 
   if (currentFiltered) {
-    graph.graphData(currentFiltered);
-    applyGraphForces();
+    renderCurrentGraph();
   }
 }
 
@@ -635,6 +837,22 @@ if (topicLinkWeightElement) {
 }
 
 applyLinkWeights();
+
+if (pinModeBtn) {
+  pinModeBtn.addEventListener('click', () => {
+    setInteractionMode('pin');
+    setStatus('Pin mode active');
+  });
+}
+
+if (clusterModeBtn) {
+  clusterModeBtn.addEventListener('click', () => {
+    setInteractionMode('cluster');
+    setStatus('Cluster mode active');
+  });
+}
+
+setInteractionMode('pin');
 
 // Particle UI wiring
 function applyParticleSettings() {
@@ -662,8 +880,8 @@ applyParticleSettings();
 if (saveLayoutBtn) {
   saveLayoutBtn.addEventListener('click', () => {
     syncPinnedPositionsFromVisibleGraph();
-    savePinnedNodesToStorage();
-    setStatus('Layout saved with pinned nodes');
+    saveLayoutState();
+    setStatus('Layout saved with pins and cluster state');
   });
 }
 
@@ -673,5 +891,17 @@ if (clearPinsBtn) {
       clearAllPins();
       setStatus('Cleared pinned nodes');
     }
+  });
+}
+
+if (resetClustersBtn) {
+  resetClustersBtn.addEventListener('click', () => {
+    if (collapsedClusters.size === 0) {
+      setStatus('No collapsed clusters to expand');
+      return;
+    }
+
+    resetClusterState();
+    setStatus('Expanded all clusters');
   });
 }
