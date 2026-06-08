@@ -909,7 +909,7 @@ async function loadGraph() {
 }
 
 window.addEventListener('resize', resizeGraph);
-resize();
+resizeGraph();
 loadGraph();
 
 // Debounce helper
