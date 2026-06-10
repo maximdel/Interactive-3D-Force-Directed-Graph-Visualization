@@ -288,135 +288,6 @@ function clearAllPins() {
   graph.refresh();
 }
 
-// Cluster helpers
-// function buildClusteredGraph(data) {
-//   if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.links)) {
-//     return { nodes: [], links: [] };
-//   }
-
-//   if (collapsedClusters.size === 0) {
-//     return {
-//       nodes: data.nodes,
-//       links: data.links,
-//     };
-//   }
-
-//   const nodeById = new Map(data.nodes.map((node) => [node.id, node]));
-//   const hiddenProjectIds = new Set();
-//   const projectMemberships = new Map();
-//   const clusterMemberCounts = new Map();
-
-//   function addProjectMembership(projectId, clusterId) {
-//     if (!projectMemberships.has(projectId)) {
-//       projectMemberships.set(projectId, new Set());
-//     }
-//     projectMemberships.get(projectId).add(clusterId);
-
-//     if (!clusterMemberCounts.has(clusterId)) {
-//       clusterMemberCounts.set(clusterId, new Set());
-//     }
-//     clusterMemberCounts.get(clusterId).add(projectId);
-//   }
-
-//   data.links.forEach((link) => {
-//     const sourceId =
-//       typeof link.source === 'object' ? link.source.id : link.source;
-//     const targetId =
-//       typeof link.target === 'object' ? link.target.id : link.target;
-//     const sourceNode = nodeById.get(sourceId);
-//     const targetNode = nodeById.get(targetId);
-
-//     if (
-//       sourceNode &&
-//       sourceNode.type === 'project' &&
-//       collapsedClusters.has(targetId)
-//     ) {
-//       hiddenProjectIds.add(sourceId);
-//       addProjectMembership(sourceId, targetId);
-//     }
-
-//     if (
-//       targetNode &&
-//       targetNode.type === 'project' &&
-//       collapsedClusters.has(sourceId)
-//     ) {
-//       hiddenProjectIds.add(targetId);
-//       addProjectMembership(targetId, sourceId);
-//     }
-//   });
-
-//   const visibleNodes = data.nodes
-//     .filter((node) => node.type !== 'project' || !hiddenProjectIds.has(node.id))
-//     .map((node) => {
-//       node.collapsedCluster = collapsedClusters.has(node.id);
-//       node.clusterMemberCount = clusterMemberCounts.has(node.id)
-//         ? clusterMemberCounts.get(node.id).size
-//         : 0;
-//       return node;
-//     });
-
-//   const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
-//   const aggregatedLinks = new Map();
-
-//   function addAggregatedLink(sourceId, targetId, link) {
-//     if (sourceId === targetId) return;
-//     const key =
-//       sourceId < targetId
-//         ? `${sourceId}::${targetId}`
-//         : `${targetId}::${sourceId}`;
-//     const existing = aggregatedLinks.get(key);
-//     const weight = link.weight || 1;
-//     if (existing) {
-//       existing.weight += weight;
-//     } else {
-//       aggregatedLinks.set(key, {
-//         source: sourceId,
-//         target: targetId,
-//         weight,
-//         role: 'cluster',
-//       });
-//     }
-//   }
-
-//   data.links.forEach((link) => {
-//     const sourceId =
-//       typeof link.source === 'object' ? link.source.id : link.source;
-//     const targetId =
-//       typeof link.target === 'object' ? link.target.id : link.target;
-//     const sourceHidden = hiddenProjectIds.has(sourceId);
-//     const targetHidden = hiddenProjectIds.has(targetId);
-
-//     if (!sourceHidden && !targetHidden) {
-//       if (visibleNodeIds.has(sourceId) && visibleNodeIds.has(targetId)) {
-//         aggregatedLinks.set(
-//           sourceId < targetId
-//             ? `${sourceId}::${targetId}`
-//             : `${targetId}::${sourceId}`,
-//           { ...link },
-//         );
-//       }
-//       return;
-//     }
-
-//     const hiddenProjectId = sourceHidden ? sourceId : targetId;
-//     const neighborId = sourceHidden ? targetId : sourceId;
-//     const memberships = projectMemberships.get(hiddenProjectId);
-
-//     if (!memberships || memberships.size === 0) {
-//       return;
-//     }
-
-//     memberships.forEach((clusterId) => {
-//       if (neighborId === clusterId) return;
-//       addAggregatedLink(clusterId, neighborId, link);
-//     });
-//   });
-
-//   return {
-//     nodes: visibleNodes,
-//     links: Array.from(aggregatedLinks.values()),
-//   };
-// }
 function buildClusteredGraph(data) {
   if (!data?.nodes || !data?.links) return { nodes: [], links: [] };
   if (collapsedClusters.size === 0)
@@ -672,7 +543,7 @@ function getActiveChips() {
       label: filterState.status === 'other' ? 'Not SIGNED' : filterState.status,
       clear() {
         filterState.status = '';
-        if (statusFilterEl) statusFilterEl.value = '';
+        if (statusFilterElement) statusFilterElement.value = '';
       },
     });
   if (filterState.scheme)
@@ -681,7 +552,7 @@ function getActiveChips() {
       label: filterState.scheme,
       clear() {
         filterState.scheme = '';
-        if (schemeFilterEl) schemeFilterEl.value = '';
+        if (schemeFilterElement) schemeFilterElement.value = '';
       },
     });
   if (filterState.yearMin)
@@ -690,7 +561,7 @@ function getActiveChips() {
       label: `≥ ${filterState.yearMin}`,
       clear() {
         filterState.yearMin = null;
-        if (yearMinEl) yearMinEl.value = '';
+        if (yearMinElement) yearMinElement.value = '';
       },
     });
   if (filterState.yearMax)
@@ -699,7 +570,7 @@ function getActiveChips() {
       label: `≤ ${filterState.yearMax}`,
       clear() {
         filterState.yearMax = null;
-        if (yearMaxEl) yearMaxEl.value = '';
+        if (yearMaxElement) yearMaxElement.value = '';
       },
     });
   if (filterState.country)
@@ -734,18 +605,18 @@ function getActiveChips() {
 
 // chips
 function renderFilterChips() {
-  if (!activeFiltersEl) return;
+  if (!activeFiltersElement) return;
   const chips = getActiveChips();
 
   if (chips.length === 0) {
-    activeFiltersEl.innerHTML = '';
-    activeFiltersEl.classList.remove('has-chips');
+    activeFiltersElement.innerHTML = '';
+    activeFiltersElement.classList.remove('has-chips');
     resizeGraph();
     return;
   }
 
-  activeFiltersEl.classList.add('has-chips');
-  activeFiltersEl.innerHTML =
+  activeFiltersElement.classList.add('has-chips');
+  activeFiltersElement.innerHTML =
     chips
       .map(
         (chip, i) =>
@@ -760,14 +631,16 @@ function renderFilterChips() {
       ? `<button class="filter-chip filter-chip--clear-all">Clear all</button>`
       : '');
 
-  activeFiltersEl.querySelectorAll('.chip-remove').forEach((btn) => {
+  activeFiltersElement.querySelectorAll('.chip-remove').forEach((btn) => {
     btn.addEventListener('click', () => {
       chips[parseInt(btn.dataset.index, 10)].clear();
       applyCurrentFilters();
     });
   });
 
-  const clearAllBtn = activeFiltersEl.querySelector('.filter-chip--clear-all');
+  const clearAllBtn = activeFiltersElement.querySelector(
+    '.filter-chip--clear-all',
+  );
   if (clearAllBtn) clearAllBtn.addEventListener('click', clearAllFilters);
 
   resizeGraph();
@@ -999,40 +872,6 @@ function updateParticleLabels() {
   }
 }
 
-// function logParticleDebug() {
-//   const activeLinks =
-//     currentDisplayed && Array.isArray(currentDisplayed.links)
-//       ? currentDisplayed.links.length
-//       : 0;
-//   const sampleLink =
-//     currentDisplayed && Array.isArray(currentDisplayed.links)
-//       ? currentDisplayed.links[0]
-//       : null;
-
-//   console.log('[particles]', {
-//     countMult: particleState.countMult,
-//     speedMult: particleState.speedMult,
-//     activeLinks,
-//     sample: sampleLink
-//       ? {
-//           kind: getLinkVisualKind(sampleLink),
-//           count: getParticleCount(sampleLink),
-//           speed: getParticleSpeed(sampleLink),
-//         }
-//       : null,
-//   });
-// }
-
-// function startParticleDebugLog() {
-//   if (particleDebugTimer) {
-//     clearInterval(particleDebugTimer);
-//   }
-
-//   particleDebugTimer = setInterval(() => {
-//     logParticleDebug();
-//   }, 1000);
-// }
-
 // highlighting
 function refreshHighlight() {
   graph
@@ -1077,135 +916,6 @@ function clearSelection() {
   closePanel();
 }
 
-// const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
-//   .backgroundColor('#0d1117')
-//   .nodeLabel((node) => '')
-//   .linkOpacity(0.45)
-//   .nodeOpacity(0.95)
-//   .nodeRelSize(5)
-//   .nodeResolution(8)
-//   .nodeThreeObjectExtend(() => false)
-//   .nodeThreeObject(createPinnedGlowObject)
-//   .enableNodeDrag(true)
-//   // node colour — dim non-highlighted nodes when something is selected
-//   .nodeColor((node) => {
-//     if (highlightNodes.size === 0) return node.color || '#4a9eff';
-//     return highlightNodes.has(node.id)
-//       ? node.color || '#4a9eff'
-//       : 'rgba(80,80,80,0.25)';
-//   })
-//   // link colour — highlight connected links
-//   .linkColor((link) => {
-//     if (highlightLinks.size === 0) return 'rgba(255,255,255,0.25)';
-//     const key = linkKey(link);
-//     return highlightLinks.has(key)
-//       ? 'rgba(255,255,255,0.85)'
-//       : 'rgba(255,255,255,0.05)';
-//   })
-//   .linkWidth((link) => {
-//     const key = linkKey(link);
-//     return highlightLinks.has(key) ? 2.5 : Math.max(0.5, link.weight || 1);
-//   })
-//   .linkDirectionalParticles((link) => {
-//     const key = linkKey(link);
-//     return highlightLinks.has(key) ? 4 : 0;
-//   })
-//   .linkDirectionalParticleWidth(2)
-//   // interactions
-//   .onNodeClick(handleNodeClick)
-//   .onNodeHover(handleNodeHover)
-//   .onLinkClick(handleLinkClick)
-//   .onLinkHover(handleLinkHover)
-//   .onBackgroundClick(clearSelection);
-
-// window.__graph = graph;
-
-// plain click pins; shift-click collapses/expands clusters
-// graph.onNodeClick((node, event) => {
-//   try {
-//     if (
-//       interactionMode === 'cluster' ||
-//       (event && event.shiftKey && isCollapsibleClusterNode(node))
-//     ) {
-//       toggleClusterCollapse(node);
-//       return;
-//     }
-
-//     if (interactionMode === 'pin') {
-//       togglePin(node);
-//     }
-//   } catch (e) {
-//     console.warn('Pin toggle failed', e);
-//   }
-// });
-
-// graph.onNodeDragEnd((node) => {
-//   if (!node) return;
-//   if (node.pinned) {
-//     // update saved pinned position
-//     pinnedPositions.set(node.id, { x: node.x, y: node.y, z: node.z });
-//     savePinnedNodesToStorage();
-//   }
-// });
-
-// function resizeGraph() {
-//   const headerHeight = headerElement ? headerElement.offsetHeight : 0;
-//   const graphHeight = Math.max(0, window.innerHeight - headerHeight);
-
-//   graph.width(window.innerWidth).height(graphHeight);
-// }
-
-function highlightNeighbourhood(nodeId) {
-  const source = currentDisplayed || graphData;
-  highlightNodes = new Set([nodeId]);
-  highlightLinks = new Set();
-
-  for (const link of source.links) {
-    const s = typeof link.source === 'object' ? link.source.id : link.source;
-    const t = typeof link.target === 'object' ? link.target.id : link.target;
-    if (s === nodeId || t === nodeId) {
-      highlightLinks.add(linkKey(link));
-      highlightNodes.add(s);
-      highlightNodes.add(t);
-    }
-  }
-
-  graph
-    .nodeColor(graph.nodeColor())
-    .linkColor(graph.linkColor())
-    .linkWidth(graph.linkWidth())
-    .linkDirectionalParticles(graph.linkDirectionalParticles());
-}
-
-function highlightLink(link) {
-  highlightNodes = new Set();
-  highlightLinks = new Set([linkKey(link)]);
-
-  const s = typeof link.source === 'object' ? link.source.id : link.source;
-  const t = typeof link.target === 'object' ? link.target.id : link.target;
-  highlightNodes.add(s);
-  highlightNodes.add(t);
-
-  graph
-    .nodeColor(graph.nodeColor())
-    .linkColor(graph.linkColor())
-    .linkWidth(graph.linkWidth())
-    .linkDirectionalParticles(graph.linkDirectionalParticles());
-}
-
-function clearSelection() {
-  selectedId = null;
-  highlightNodes = new Set();
-  highlightLinks = new Set();
-
-  graph
-    .nodeColor(graph.nodeColor())
-    .linkColor(graph.linkColor())
-    .linkWidth(graph.linkWidth())
-    .linkDirectionalParticles(graph.linkDirectionalParticles());
-
-  closePanel();
-}
 // Deterministic hash -> uint32
 function hashStringToUint32(str) {
   let h = 2166136261 >>> 0;
@@ -1242,78 +952,6 @@ function filterGraphByText(data, text) {
   const nodes = data.nodes.filter((n) => keepNodeIds.has(n.id));
   return { nodes, links };
 }
-
-// function applyCurrentFilters() {
-//   const q =
-//     filterTextElement && filterTextElement.value
-//       ? filterTextElement.value.trim()
-//       : '';
-//   const usingPreview = !(previewToggleElement && !previewToggleElement.checked);
-
-//   if (usingPreview && fullData) {
-//     const sampled = buildSampledGraph(fullData, getCurrentSamplePct(), 42);
-//     currentFiltered = q ? filterGraphByText(sampled, q) : sampled;
-//   } else if (!usingPreview && fullData) {
-//     currentFiltered = q ? filterGraphByText(fullData, q) : fullData;
-//   } else {
-//     currentFiltered = { nodes: [], links: [] };
-//   }
-
-//   renderCurrentGraph();
-//   if (currentFiltered && currentFiltered.nodes) {
-//     setStatus(
-//       `Showing ${currentFiltered.nodes.length} nodes, ${currentFiltered.links.length} links${usingPreview ? ` (preview ${getCurrentSamplePct()}%)` : ''}`,
-//     );
-//   }
-// }
-
-// async function loadGraph() {
-//   try {
-//     setStatus('Loading graph data...');
-//     const controller = new AbortController();
-//     const timeoutId = setTimeout(() => controller.abort(), 30000);
-//     const response = await fetch('/api/graph', {
-//       cache: 'no-store',
-//       signal: controller.signal,
-//     });
-//     clearTimeout(timeoutId);
-
-//     if (!response.ok) {
-//       throw new Error(`Request failed with status ${response.status}`);
-//     }
-
-//     const data = await response.json();
-//     fullData = data;
-
-//     // load any saved pinned nodes so they can be applied to views
-//     loadPinnedNodesFromStorage();
-//     loadCollapsedClustersFromStorage();
-
-//     graph
-//       .graphData(buildSampledGraph(data, getCurrentSamplePct(), 42))
-//       .nodeId('id')
-//       .nodeColor((node) => node.color || '#4a9eff')
-//       .d3Force('charge')
-//       .strength(-80);
-
-//     applyGraphForces();
-//     startParticleDebugLog();
-
-//     // initial filtered view
-//     applyCurrentFilters();
-//   } catch (err) {
-//     if (err && err.name === 'AbortError') {
-//       console.error('Graph load timed out after 30 seconds');
-//       setStatus('Graph load timed out');
-//       graph.graphData({ nodes: [], links: [] });
-//       return;
-//     }
-
-//     console.error('Failed to load graph data:', err);
-//     setStatus('Failed to load graph data');
-//     graph.graphData({ nodes: [], links: [] });
-//   }
-// }
 
 // panel
 function openPanel() {
@@ -1700,35 +1338,35 @@ if (preset10)
   });
 
 // Node types visibility
-if (showProjectsEl)
-  showProjectsEl.addEventListener('change', () => {
-    filterState.nodeTypes.project = showProjectsEl.checked;
+if (showProjectsElement)
+  showProjectsElement.addEventListener('change', () => {
+    filterState.nodeTypes.project = showProjectsElement.checked;
     applyCurrentFilters();
   });
-if (showOrganizationsEl)
-  showOrganizationsEl.addEventListener('change', () => {
-    filterState.nodeTypes.organization = showOrganizationsEl.checked;
+if (showOrganizationsElement)
+  showOrganizationsElement.addEventListener('change', () => {
+    filterState.nodeTypes.organization = showOrganizationsElement.checked;
     applyCurrentFilters();
   });
-if (showTopicsEl)
-  showTopicsEl.addEventListener('change', () => {
-    filterState.nodeTypes.topic = showTopicsEl.checked;
+if (showTopicsElement)
+  showTopicsElement.addEventListener('change', () => {
+    filterState.nodeTypes.topic = showTopicsElement.checked;
     applyCurrentFilters();
   });
 
 // Status
-if (statusFilterEl)
-  statusFilterEl.addEventListener('change', () => {
-    filterState.status = statusFilterEl.value;
+if (statusFilterElement)
+  statusFilterElement.addEventListener('change', () => {
+    filterState.status = statusFilterElement.value;
     applyCurrentFilters();
   });
 
 // Scheme
-if (schemeFilterEl)
-  schemeFilterEl.addEventListener(
+if (schemeFilterElement)
+  schemeFilterElement.addEventListener(
     'input',
     debounce(() => {
-      filterState.scheme = schemeFilterEl.value.trim();
+      filterState.scheme = schemeFilterElement.value.trim();
       applyCurrentFilters();
     }, 300),
   );
@@ -1752,25 +1390,25 @@ function applySampledView(pct, seed = 42) {
 }
 
 // Year range
-if (yearMinEl)
-  yearMinEl.addEventListener('change', () => {
-    const v = parseInt(yearMinEl.value, 10);
+if (yearMinElement)
+  yearMinElement.addEventListener('change', () => {
+    const v = parseInt(yearMinElement.value, 10);
     filterState.yearMin = isNaN(v) ? null : v;
     applyCurrentFilters();
   });
-if (yearMaxEl)
-  yearMaxEl.addEventListener('change', () => {
-    const v = parseInt(yearMaxEl.value, 10);
+if (yearMaxElement)
+  yearMaxElement.addEventListener('change', () => {
+    const v = parseInt(yearMaxElement.value, 10);
     filterState.yearMax = isNaN(v) ? null : v;
     applyCurrentFilters();
   });
 
 // Country
-if (countryFilterEl)
-  countryFilterEl.addEventListener(
+if (countryFilterElement)
+  countryFilterElement.addEventListener(
     'input',
     debounce(() => {
-      filterState.country = countryFilterEl.value.trim();
+      filterState.country = countryFilterElement.value.trim();
       applyCurrentFilters();
     }, 300),
   );
@@ -1865,210 +1503,3 @@ if (resetClustersBtn) {
     setStatus('Expanded all clusters');
   });
 }
-
-// function renderProject(data) {
-//   const statusClass =
-//     data.status === 'SIGNED' ? 'status-SIGNED' : 'status-default';
-//   const statusPill = data.status
-//     ? `<span class="status-pill ${statusClass}">${data.status}</span>`
-//     : '';
-
-//   const keywords = data.keywords
-//     ? data.keywords
-//         .split(';')
-//         .map((k) => k.trim())
-//         .filter(Boolean)
-//     : [];
-//   const keywordHtml = keywords.length
-//     ? `<div class="keywords">${keywords.map((k) => `<span class="keyword-pill">${k}</span>`).join('')}</div>`
-//     : '';
-
-//   const info = [
-//     row('Status', statusPill),
-//     row('Acronym', fmt(data.acronym), 'mono'),
-//     row('Start', fmtDate(data.startDate)),
-//     row('End', fmtDate(data.endDate)),
-//     row('Scheme', fmt(data.fundingScheme)),
-//   ].join('');
-
-//   const funding = [
-//     row(
-//       'Total cost',
-//       `<span class="cost-val">${fmtCurrency(data.totalCost)}</span>`,
-//     ),
-//     row(
-//       'EC contribution',
-//       `<span class="cost-val">${fmtCurrency(data.ecMaxContribution)}</span>`,
-//     ),
-//   ].join('');
-
-//   const objectiveHtml = data.objective
-//     ? `<div class="panel-section">
-//         <div class="panel-section-title">Objective</div>
-//         <div class="objective-text">${data.objective}</div>
-//        </div>`
-//     : '';
-
-//   const kwHtml = keywordHtml
-//     ? `<div class="panel-section">
-//         <div class="panel-section-title">Keywords</div>
-//         ${keywordHtml}
-//        </div>`
-//     : '';
-
-//   return (
-//     section('Details', info) +
-//     section('Funding', funding) +
-//     objectiveHtml +
-//     kwHtml
-//   );
-// }
-
-// function renderOrganization(data) {
-//   const urlHtml = data.url
-//     ? `<a href="${data.url}" target="_blank" rel="noopener">${data.url}</a>`
-//     : null;
-
-//   const info = [
-//     row('Full name', fmt(data.name)),
-//     row('Activity', fmt(data.activityType)),
-//     row('Country', fmt(data.country)),
-//     row('City', fmt(data.city)),
-//     row('VAT', fmt(data.vatNumber), 'mono'),
-//     row('Website', urlHtml),
-//   ].join('');
-
-//   return section('Details', info);
-// }
-
-// function renderTopic(data) {
-//   const info = [
-//     row('Code', fmt(data.topic), 'mono'),
-//     row('Title', fmt(data.title)),
-//   ].join('');
-
-//   return section('Details', info);
-// }
-
-// function renderLinkPanel(link, sourceNode, targetNode) {
-//   const s = sourceNode
-//     ? sourceNode.label
-//     : typeof link.source === 'object'
-//       ? link.source.id
-//       : link.source;
-//   const t = targetNode
-//     ? targetNode.label
-//     : typeof link.target === 'object'
-//       ? link.target.id
-//       : link.target;
-
-//   const info = [
-//     row('From', fmt(s)),
-//     row('To', fmt(t)),
-//     row('Role', fmt(link.role)),
-//     row('Weight', fmt(link.weight)),
-//   ].join('');
-
-//   return section('Relationship', info);
-// }
-
-// function countConnections(nodeId) {
-//   const source = currentDisplayed || graphData;
-//   let count = 0;
-//   for (const link of source.links) {
-//     const s = typeof link.source === 'object' ? link.source.id : link.source;
-//     const t = typeof link.target === 'object' ? link.target.id : link.target;
-//     if (s === nodeId || t === nodeId) count++;
-//   }
-//   return count;
-// }
-
-// function handleNodeClick(node, event) {
-//   if (!node) return;
-
-//   // cluster mode or shift+click on collapsible node
-//   if (
-//     interactionMode === 'cluster' ||
-//     (event && event.shiftKey && isCollapsibleClusterNode(node))
-//   ) {
-//     toggleClusterCollapse(node);
-//     return;
-//   }
-
-//   // pin mode
-//   if (interactionMode === 'pin') {
-//     togglePin(node);
-//   }
-
-//   // always open the detail panel
-//   selectedId = node.id;
-//   highlightNeighbourhood(node.id);
-//   const data = node.data || {};
-//   const conns = countConnections(node.id);
-//   setBadge(node.type);
-//   panelTitle.textContent = node.label || node.id;
-//   const connChip = `<div class="conn-chip">Connections <span>${conns}</span></div>`;
-//   let content = connChip;
-//   if (node.type === 'project') content += renderProject(data);
-//   else if (node.type === 'organization') content += renderOrganization(data);
-//   else if (node.type === 'topic') content += renderTopic(data);
-//   panelBody.innerHTML =
-//     content || '<div class="empty-state">No details available.</div>';
-//   openPanel();
-// }
-
-// function handleLinkClick(link) {
-//   if (!link) return;
-//   highlightLink(link);
-
-//   const nodeMap = Object.fromEntries(graphData.nodes.map((n) => [n.id, n]));
-//   const s = typeof link.source === 'object' ? link.source.id : link.source;
-//   const t = typeof link.target === 'object' ? link.target.id : link.target;
-
-//   setBadge('link');
-//   panelTitle.textContent = `${nodeMap[s]?.label || s}  →  ${nodeMap[t]?.label || t}`;
-//   panelBody.innerHTML = renderLinkPanel(link, nodeMap[s], nodeMap[t]);
-//   openPanel();
-// }
-
-// function handleNodeHover(node, prevNode) {
-//   graphElement.style.cursor = node ? 'pointer' : 'default';
-
-//   if (!node) {
-//     tooltip.classList.remove('visible');
-//     return;
-//   }
-
-//   const data = node.data || {};
-//   let sub = '';
-//   if (node.type === 'project') {
-//     sub = [data.acronym, data.status, data.fundingScheme]
-//       .filter(Boolean)
-//       .join(' · ');
-//   } else if (node.type === 'organization') {
-//     sub = [data.activityType, data.country].filter(Boolean).join(' · ');
-//   } else if (node.type === 'topic') {
-//     sub = data.topic || '';
-//   }
-
-//   tooltip.innerHTML = `<div>${node.label || node.id}</div>${sub ? `<div class="tt-sub">${sub}</div>` : ''}`;
-//   tooltip.classList.add('visible');
-// }
-
-// function handleLinkHover(link) {
-//   graphElement.style.cursor = link ? 'pointer' : 'default';
-
-//   if (!link) {
-//     tooltip.classList.remove('visible');
-//     return;
-//   }
-
-//   const nodeMap = Object.fromEntries(graphData.nodes.map((n) => [n.id, n]));
-//   const s = typeof link.source === 'object' ? link.source.id : link.source;
-//   const t = typeof link.target === 'object' ? link.target.id : link.target;
-//   const sLabel = nodeMap[s]?.label || s;
-//   const tLabel = nodeMap[t]?.label || t;
-
-//   tooltip.innerHTML = `<div>${sLabel} → ${tLabel}</div>${link.role ? `<div class="tt-sub">${link.role}</div>` : ''}`;
-//   tooltip.classList.add('visible');
-// }
