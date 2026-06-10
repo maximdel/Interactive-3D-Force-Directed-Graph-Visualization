@@ -16,18 +16,23 @@
       </div>
 
       <div class="header-controls">
-        <section class="control-group">
-          <label class="control-pill">
-            <input type="checkbox" id="previewToggle" checked />
-            Preview
-          </label>
-          <input
-            class="control-input"
-            id="filterText"
-            placeholder="Filter (title, org, topic)..."
-          />
+        <!-- search + preview -->
+        <section class="control-group control-group--stack">
+          <div class="control-heading">Search</div>
+          <div class="control-row">
+            <label class="control-pill">
+              <input type="checkbox" id="previewToggle" checked />
+              Preview
+            </label>
+            <input
+              class="control-input"
+              id="filterText"
+              placeholder="Title, objective, keyword, country…"
+            />
+          </div>
         </section>
 
+        <!-- sampling -->
         <section class="control-group control-group--stack">
           <div class="control-heading">Sample</div>
           <div class="control-row">
@@ -66,6 +71,86 @@
           </div>
         </section>
 
+        <!-- node type visibility -->
+        <section class="control-group control-group--stack">
+          <div class="control-heading">Node Types</div>
+          <div class="control-row">
+            <label class="control-pill">
+              <input type="checkbox" id="showProjects" checked />
+              <span class="type-dot type-dot--project"></span>Projects
+            </label>
+            <label class="control-pill">
+              <input type="checkbox" id="showOrganizations" checked />
+              <span class="type-dot type-dot--org"></span>Orgs
+            </label>
+            <label class="control-pill">
+              <input type="checkbox" id="showTopics" checked />
+              <span class="type-dot type-dot--topic"></span>Topics
+            </label>
+          </div>
+        </section>
+
+        <!-- project filters -->
+        <section class="control-group control-group--stack">
+          <div class="control-heading">Projects</div>
+          <div class="control-row">
+            <label class="control-pill">
+              Status
+              <select id="statusFilter" class="control-select">
+                <option value="">All</option>
+                <option value="SIGNED">SIGNED</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label class="control-pill">
+              Scheme
+              <input
+                id="schemeFilter"
+                class="control-input control-input--short"
+                placeholder="e.g. ERC-ADG"
+                list="schemeList"
+              />
+              <datalist id="schemeList"></datalist>
+            </label>
+          </div>
+          <div class="control-row">
+            <label class="control-pill">
+              Year
+              <input
+                id="yearMin"
+                type="number"
+                class="control-input control-input--year"
+                placeholder="From"
+              />
+              –
+              <input
+                id="yearMax"
+                type="number"
+                class="control-input control-input--year"
+                placeholder="To"
+              />
+            </label>
+          </div>
+        </section>
+
+        <!-- org filters -->
+        <section class="control-group control-group--stack">
+          <div class="control-heading">Organisations</div>
+          <div class="control-row">
+            <label class="control-pill">
+              Country
+              <input
+                id="countryFilter"
+                class="control-input control-input--short"
+                placeholder="e.g. BE, France"
+                list="countryList"
+              />
+              <datalist id="countryList"></datalist>
+            </label>
+          </div>
+        </section>
+
+        <!-- link weights -->
         <section class="control-group control-group--stack">
           <div class="control-heading">Links</div>
           <div class="control-row">
@@ -106,6 +191,7 @@
           </div>
         </section>
 
+        <!-- Pparticles -->
         <section class="control-group control-group--stack">
           <div class="control-heading">Particles</div>
           <div class="control-row">
@@ -142,6 +228,7 @@
           </div>
         </section>
 
+        <!-- layout -->
         <section class="control-group control-group--stack">
           <div class="control-heading">Layout</div>
           <div class="control-row">
@@ -162,15 +249,18 @@
               class="control-value"
               style="margin-left: 8px; color: #9da7b3; font-size: 0.8rem"
             >
-              Pin Mode: click a node to pin/unpin. Cluster Mode: click org/topic
-              nodes to collapse.
+              Pin: click to pin/unpin. Cluster: click org/topic to collapse.
             </div>
           </div>
         </section>
       </div>
+
+      <!-- active filter chips -->
+      <div id="active-filters" class="active-filters"></div>
     </header>
 
     <div id="graph"></div>
+
     <div id="panel">
       <div class="panel-header">
         <div id="panel-meta">
@@ -181,7 +271,9 @@
       </div>
       <div class="panel-body" id="panel-body"></div>
     </div>
+
     <div id="tooltip"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1/dist/3d-force-graph.min.js"></script>
     <script src="/client/main.js"></script>
   </body>

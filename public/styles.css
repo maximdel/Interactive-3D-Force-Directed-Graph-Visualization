@@ -396,7 +396,354 @@ body {
   text-align: center;
 }
 
-/* ── Tooltip ─────────────────────────────────────────────────────────────── */
+#tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: rgba(22, 27, 34, 0.95);
+  border: 1px solid #30363d;
+  border-radius: 5px;
+  padding: 7px 11px;
+  font-size: 0.78rem;
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  max-width: 240px;
+  opacity: 0;
+  transition: opacity 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#tooltip.visible {
+  opacity: 1;
+}
+#tooltip .tt-sub {
+  font-size: 0.65rem;
+  color: #7d8590;
+  margin-top: 2px;
+}
+
+.control-select {
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #26313a;
+  color: #e6edf3;
+  background: #081011;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.control-input--short {
+  min-width: 90px;
+  max-width: 130px;
+  padding: 4px 6px;
+  font-size: 0.84rem;
+}
+
+.control-input--year {
+  width: 68px;
+  min-width: 0;
+  padding: 4px 6px;
+  font-size: 0.84rem;
+}
+
+.type-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.type-dot--project {
+  background: #4a9eff;
+}
+.type-dot--org {
+  background: #ff9a4a;
+}
+.type-dot--topic {
+  background: #4aff9a;
+}
+
+.active-filters {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 2px;
+}
+
+.active-filters.has-chips {
+  display: flex;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 10px;
+  border-radius: 20px;
+  background: rgba(74, 158, 255, 0.1);
+  border: 1px solid rgba(74, 158, 255, 0.25);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.chip-group {
+  color: #7d8590;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.chip-label {
+  color: #4a9eff;
+  font-weight: 500;
+}
+
+.chip-remove {
+  background: none;
+  border: none;
+  color: #7d8590;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  margin-left: 1px;
+  transition: color 0.12s;
+}
+.chip-remove:hover {
+  color: #e6edf3;
+}
+
+.filter-chip--clear-all {
+  background: rgba(125, 133, 144, 0.1);
+  border: 1px solid rgba(125, 133, 144, 0.25);
+  border-radius: 20px;
+  color: #9da7b3;
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 3px 12px;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.filter-chip--clear-all:hover {
+  background: rgba(125, 133, 144, 0.2);
+  color: #e6edf3;
+}
+
+#graph.panel-open {
+  width: calc(100vw - var(--panel-w, 360px));
+}
+
+#panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--panel-w, 360px);
+  height: 100vh;
+  background: #161b22;
+  border-left: 1px solid #21262d;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+  overflow: hidden;
+}
+
+#panel.open {
+  transform: translateX(0);
+}
+
+.panel-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #21262d;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.panel-type-badge {
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+  margin-bottom: 6px;
+  display: inline-block;
+}
+
+.badge-project {
+  background: rgba(74, 158, 255, 0.15);
+  color: #4a9eff;
+}
+.badge-organization {
+  background: rgba(255, 154, 74, 0.15);
+  color: #ff9a4a;
+}
+.badge-topic {
+  background: rgba(74, 255, 154, 0.15);
+  color: #4aff9a;
+}
+.badge-link {
+  background: rgba(125, 133, 144, 0.15);
+  color: #7d8590;
+}
+
+.panel-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+#panel-close {
+  background: none;
+  border: 1px solid #21262d;
+  border-radius: 4px;
+  color: #7d8590;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  line-height: 1;
+  flex-shrink: 0;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+#panel-close:hover {
+  border-color: #30363d;
+  color: #e6edf3;
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  scrollbar-width: thin;
+  scrollbar-color: #21262d transparent;
+}
+
+.panel-section {
+  margin-bottom: 20px;
+}
+
+.panel-section-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7d8590;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #21262d;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 4px 10px;
+  margin-bottom: 8px;
+  align-items: baseline;
+}
+
+.field-key {
+  font-size: 0.7rem;
+  color: #7d8590;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.field-val {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.field-val.mono {
+  font-size: 0.72rem;
+  font-family: monospace;
+}
+.field-val a {
+  color: #4a9eff;
+  text-decoration: none;
+}
+.field-val a:hover {
+  text-decoration: underline;
+}
+
+.objective-text {
+  font-size: 0.78rem;
+  line-height: 1.65;
+  opacity: 0.85;
+  max-height: 180px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #21262d transparent;
+}
+
+.keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+.keyword-pill {
+  font-size: 0.65rem;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgba(74, 158, 255, 0.1);
+  color: #4a9eff;
+  border: 1px solid rgba(74, 158, 255, 0.2);
+}
+
+.status-pill {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+.status-SIGNED {
+  background: rgba(74, 255, 154, 0.1);
+  color: #4aff9a;
+  border: 1px solid rgba(74, 255, 154, 0.2);
+}
+.status-default {
+  background: rgba(125, 133, 144, 0.1);
+  color: #7d8590;
+  border: 1px solid #21262d;
+}
+
+.cost-val {
+  font-size: 0.75rem;
+  color: #4aff9a;
+}
+
+.conn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(125, 133, 144, 0.1);
+  border: 1px solid #21262d;
+  color: #7d8590;
+  margin-bottom: 16px;
+}
+.conn-chip span {
+  color: #e6edf3;
+  font-weight: 600;
+}
+
+.empty-state {
+  color: #7d8590;
+  font-size: 0.8rem;
+  padding: 20px 0;
+  text-align: center;
+}
+
 #tooltip {
   position: fixed;
   pointer-events: none;
