@@ -1,5 +1,6 @@
 import { isCollapsibleClusterNode } from './clustering.js';
-import { clusterModeBtn, pinModeBtn } from './dom.js';
+import { clusterModeBtn, inspectModeBtn, pinModeBtn } from './dom.js';
+import { attachPinGlow, detachPinGlow } from './models.js';
 import { graph, renderCurrentGraph } from './graph.js';
 import {
   collapsedClusters,
@@ -30,15 +31,16 @@ export function togglePin(node) {
     delete node.fz;
     node.pinned = false;
     pinnedPositions.delete(node.id);
+    detachPinGlow(node.__threeObj);
   } else {
     node.fx = node.x;
     node.fy = node.y;
     node.fz = node.z;
     node.pinned = true;
     pinnedPositions.set(node.id, { x: node.fx, y: node.fy, z: node.fz });
+    attachPinGlow(node.__threeObj);
   }
   savePinnedNodesToStorage();
-  graph.refresh(); // redraw so glow appears / disappears immediately
   setStatus(`${node.pinned ? 'Pinned' : 'Unpinned'} ${getNodeLabel(node)}`);
 }
 
@@ -49,6 +51,7 @@ export function clearAllPins() {
   [refs.currentFiltered, refs.fullData].forEach((dataset) => {
     if (dataset && Array.isArray(dataset.nodes)) {
       dataset.nodes.forEach((n) => {
+        if (n.pinned) detachPinGlow(n.__threeObj);
         delete n.fx;
         delete n.fy;
         delete n.fz;
@@ -56,8 +59,6 @@ export function clearAllPins() {
       });
     }
   });
-
-  graph.refresh();
 }
 
 export function toggleClusterCollapse(node) {

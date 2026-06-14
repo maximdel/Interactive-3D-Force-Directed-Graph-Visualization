@@ -7,6 +7,7 @@ import {
   applySampleBtn,
   clearPinsBtn,
   clusterModeBtn,
+  inspectModeBtn,
   countryFilterElement,
   filterTextElement,
   orgLinkWeightElement,
@@ -31,8 +32,12 @@ import {
   topicLinkWeightValueElement,
   yearMaxElement,
   yearMinElement,
+  depthToggleElement,
+  depthFocalElement,
+  depthWidthElement,
 } from './dom.js';
 import { applyCurrentFilters } from './filters.js';
+import { applyDepthField, depthState } from './depth.js';
 import { graph, renderCurrentGraph, updateParticleLabels } from './graph.js';
 import { syncPinnedPositionsFromVisibleGraph } from './pins.js';
 import { buildSampledGraph, filterGraphByText } from './sampling.js';
@@ -210,6 +215,12 @@ if (particleSpeedMultElement)
   particleSpeedMultElement.addEventListener('input', applyParticleSettings);
 applyParticleSettings();
 
+if (inspectModeBtn)
+  inspectModeBtn.addEventListener('click', () => {
+    setInteractionMode('inspect');
+    setStatus('Inspect mode active');
+  });
+
 if (pinModeBtn)
   pinModeBtn.addEventListener('click', () => {
     setInteractionMode('pin');
@@ -221,7 +232,7 @@ if (clusterModeBtn)
     setStatus('Cluster mode active');
   });
 
-setInteractionMode('pin');
+setInteractionMode('inspect');
 
 if (saveLayoutBtn)
   saveLayoutBtn.addEventListener('click', () => {
@@ -246,4 +257,28 @@ if (resetClustersBtn)
     }
     resetClusterState();
     setStatus('Expanded all clusters');
+  });
+
+// Depth field controls
+function _applyDepthNow() {
+  const nodes = refs.currentDisplayed?.nodes;
+  if (nodes) applyDepthField(nodes);
+}
+
+if (depthToggleElement)
+  depthToggleElement.addEventListener('change', () => {
+    depthState.enabled = depthToggleElement.checked;
+    _applyDepthNow();
+  });
+
+if (depthFocalElement)
+  depthFocalElement.addEventListener('input', () => {
+    depthState.focalPct = parseFloat(depthFocalElement.value);
+    if (depthState.enabled) _applyDepthNow();
+  });
+
+if (depthWidthElement)
+  depthWidthElement.addEventListener('input', () => {
+    depthState.widthPct = parseFloat(depthWidthElement.value);
+    if (depthState.enabled) _applyDepthNow();
   });

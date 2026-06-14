@@ -1,6 +1,8 @@
 import './controls.js'; // imported for side effects — wires all UI event listeners
 import { applyCurrentFilters, populateFilterOptions } from './filters.js';
 import { applyGraphForces, graph, resizeGraph } from './graph.js';
+import { preloadModels } from './models.js';
+import { applyDepthField } from './depth.js';
 import {
   clearSelection,
   handleLinkClick,
@@ -24,7 +26,15 @@ graph
   .onNodeHover(handleNodeHover)
   .onLinkClick(handleLinkClick)
   .onLinkHover(handleLinkHover)
-  .onBackgroundClick(clearSelection);
+  .onBackgroundClick(clearSelection)
+  .onEngineTick(() => {
+    const nodes = refs.currentDisplayed?.nodes;
+    if (nodes) applyDepthField(nodes);
+  })
+  .onEngineStop(() => {
+    const nodes = refs.currentDisplayed?.nodes;
+    if (nodes) applyDepthField(nodes);
+  });
 
 // Update the stored position when a pinned node is dragged
 graph.onNodeDragEnd((node) => {
@@ -38,6 +48,7 @@ graph.onNodeDragEnd((node) => {
 async function loadGraph() {
   try {
     setStatus('Loading…');
+    await preloadModels();
     const res = await fetch('/api/graph', { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 

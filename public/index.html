@@ -1,4 +1,5 @@
 <!doctype html>
+
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -153,9 +154,38 @@
 
         <span class="tb-sep"></span>
 
+        <label class="tb-pill" title="Enable parallax depth field — fades nodes outside the focal Z band">
+          <input type="checkbox" id="depthToggle" />
+          Depth
+        </label>
+        <span class="tb-label">Focus</span>
+        <input
+          class="tb-range tb-range--sm"
+          id="depthFocal"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          value="50"
+          title="Focal plane position through the graph's Z range (0% = front, 100% = back)"
+        />
+        <span class="tb-label">Width</span>
+        <input
+          class="tb-range tb-range--sm"
+          id="depthWidth"
+          type="range"
+          min="5"
+          max="100"
+          step="1"
+          value="30"
+          title="Width of in-focus band as % of total Z range"
+        />
+
+        <span class="tb-sep"></span>
+
         <button
           id="inspectMode"
-          class="tb-btn is-active"
+          class="tb-btn"
           title="View node details — no side effects"
         >
           Inspect
@@ -219,7 +249,25 @@
 
     <div id="tooltip"></div>
 
+    <!-- Import map must appear before any module scripts.
+         GLTFLoader.js imports 'three' as a bare specifier; this map resolves it. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.155.0/examples/jsm/"
+        }
+      }
+    </script>
+    <!-- UMD build: sets window.ForceGraph3D synchronously before any module runs -->
     <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1/dist/3d-force-graph.min.js"></script>
+    <!-- This module MUST be listed before main.js so window.THREE is set first. -->
+    <script type="module">
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+      window.THREE = THREE;
+      window.THREE.GLTFLoader = GLTFLoader;
+    </script>
     <script type="module" src="/client/main.js"></script>
   </body>
 </html>

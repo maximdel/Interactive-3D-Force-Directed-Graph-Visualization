@@ -62,3 +62,8 @@ export const showOrganizationsElement =
   document.getElementById('showOrganizations');
 export const showTopicsElement = document.getElementById('showTopics');
 export const activeFiltersElement = document.getElementById('active-filters');
+
+// Depth field
+export const depthToggleElement = document.getElementById('depthToggle');
+export const depthFocalElement   = document.getElementById('depthFocal');
+export const depthWidthElement   = document.getElementById('depthWidth');

@@ -13,8 +13,9 @@ import {
   getParticleSpeed,
   getParticleWidth,
 } from './links.js';
-import { applyPinsToNodeList, createPinnedGlowObject } from './pins.js';
-import { particleState, refs } from './state.js';
+import { getNodeObject } from './models.js';
+import { applyPinsToNodeList } from './pins.js';
+import { particleState, pinnedGlowColor, refs } from './state.js';
 import { linkKey } from './utils.js';
 
 // Event handlers (onNodeClick etc.) are wired in main.js to avoid circular deps
@@ -26,8 +27,8 @@ export const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
   .nodeOpacity(0.95)
   .nodeRelSize(5)
   .nodeResolution(8)
-  .nodeThreeObjectExtend((node) => !!node.pinned)
-  .nodeThreeObject(createPinnedGlowObject)
+  .nodeThreeObjectExtend(false)
+  .nodeThreeObject(getNodeObject)
   .enableNodeDrag(true)
   .nodeColor((node) => {
     // pinned nodes always render gold regardless of selection state
@@ -112,16 +113,6 @@ export function highlightNeighbourhood(nodeId) {
       refs.highlightNodes.add(t);
     }
   }
-  refreshHighlight();
-}
-
-export function highlightLink(link) {
-  refs.highlightNodes = new Set();
-  refs.highlightLinks = new Set([linkKey(link)]);
-  const s = typeof link.source === 'object' ? link.source.id : link.source;
-  const t = typeof link.target === 'object' ? link.target.id : link.target;
-  refs.highlightNodes.add(s);
-  refs.highlightNodes.add(t);
   refreshHighlight();
 }
 

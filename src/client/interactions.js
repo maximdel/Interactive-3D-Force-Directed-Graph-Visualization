@@ -33,7 +33,10 @@ export function handleNodeClick(node, event) {
     return;
   }
 
-  if (refs.interactionMode === 'pin') togglePin(node);
+  if (refs.interactionMode === 'pin') {
+    togglePin(node);
+    return;
+  }
 
   refs.selectedId = node.id;
   highlightNeighbourhood(node.id);

@@ -35,7 +35,7 @@ export const refs = {
   selectedId: null,
   highlightNodes: new Set(),
   highlightLinks: new Set(),
-  interactionMode: 'pin',
+  interactionMode: 'inspect',
   fullData: null,
   currentFiltered: null,
   currentDisplayed: null,
