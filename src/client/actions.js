@@ -15,6 +15,8 @@ import { getNodeLabel, setStatus } from './utils.js';
 
 export function setInteractionMode(mode) {
   refs.interactionMode = mode;
+  if (inspectModeBtn)
+    inspectModeBtn.classList.toggle('is-active', mode === 'inspect');
   if (pinModeBtn) pinModeBtn.classList.toggle('is-active', mode === 'pin');
   if (clusterModeBtn)
     clusterModeBtn.classList.toggle('is-active', mode === 'cluster');

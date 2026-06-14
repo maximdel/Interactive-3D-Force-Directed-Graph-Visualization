@@ -49,11 +49,8 @@ async function loadGraph() {
     loadPinnedNodesFromStorage();
     loadCollapsedClustersFromStorage();
 
-    graph
-      .nodeId('id')
-      .nodeColor((node) => node.color || '#4a9eff')
-      .d3Force('charge')
-      .strength(-80);
+    graph.nodeId('id');
+    graph.d3Force('charge').strength(-80);
 
     applyCurrentFilters();
     applyGraphForces();

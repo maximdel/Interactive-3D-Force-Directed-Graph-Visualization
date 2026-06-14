@@ -46,6 +46,7 @@ export const particleSpeedMultValue = document.getElementById(
 export const saveLayoutBtn = document.getElementById('saveLayout');
 export const clearPinsBtn = document.getElementById('clearPins');
 export const resetClustersBtn = document.getElementById('resetClusters');
+export const inspectModeBtn = document.getElementById('inspectMode');
 export const pinModeBtn = document.getElementById('pinMode');
 export const clusterModeBtn = document.getElementById('clusterMode');
 

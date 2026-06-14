@@ -30,10 +30,15 @@ export const graph = ForceGraph3D({ controlType: 'orbit' })(graphElement)
   .nodeThreeObject(createPinnedGlowObject)
   .enableNodeDrag(true)
   .nodeColor((node) => {
-    if (refs.highlightNodes.size === 0) return node.color || '#4a9eff';
-    return refs.highlightNodes.has(node.id)
-      ? node.color || '#4a9eff'
-      : 'rgba(80,80,80,0.25)';
+    // pinned nodes always render gold regardless of selection state
+    if (node.pinned) return pinnedGlowColor;
+    // When something is selected, dim everything outside the neighbourhood
+    if (refs.highlightNodes.size > 0) {
+      return refs.highlightNodes.has(node.id)
+        ? node.color || '#4a9eff'
+        : 'rgba(80,80,80,0.25)';
+    }
+    return node.color || '#4a9eff';
   })
   .linkColor((link) => {
     if (refs.highlightLinks.size === 0) return 'rgba(255,255,255,0.25)';
@@ -107,6 +112,16 @@ export function highlightNeighbourhood(nodeId) {
       refs.highlightNodes.add(t);
     }
   }
+  refreshHighlight();
+}
+
+export function highlightLink(link) {
+  refs.highlightNodes = new Set();
+  refs.highlightLinks = new Set([linkKey(link)]);
+  const s = typeof link.source === 'object' ? link.source.id : link.source;
+  const t = typeof link.target === 'object' ? link.target.id : link.target;
+  refs.highlightNodes.add(s);
+  refs.highlightNodes.add(t);
   refreshHighlight();
 }
 
